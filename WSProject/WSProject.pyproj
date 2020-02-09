@@ -24,6 +24,9 @@
     <Compile Include="data_loader.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="random_forest.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="WSProject.py" />
   </ItemGroup>
   <ItemGroup>

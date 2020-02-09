@@ -1,6 +1,27 @@
 import jsonlines as jl
 import numpy as np
 import pandas as pd
+import re
+from nltk.corpus import stopwords
+
+def sanitize(documents):
+    """
+    documents: array of strings\n
+    returns: array of lists of words that have been sanitized\n
+    """
+    stop_words = set(stopwords.words('english'))
+    v_sub = np.vectorize(re.sub)
+    text = np.char.lower(documents)
+    text = v_sub(r'(\W|[0-9]|_)+', ' ', text)
+    tokens = np.char.split(text)
+    tokens = np.array([[token for token in lst if token not in stop_words] for lst in tokens])
+    return (tokens)
+
+
+
+def BoW(documents):
+    
+    pass
 
 
 def stats(questions, answers, cats, ids):

@@ -1,4 +1,4 @@
-from data_loader import load_data, stats
+from data_loader import load_data, stats, sanitize
 if __name__ == '__main__':
     ################################
     #### Load & preprocess data ####
@@ -17,3 +17,4 @@ if __name__ == '__main__':
     # TODO: Split in to training, validation, and test set - maybe use 5CV?
     # TODO: Remove stop words?
     # TODO: Use BoW on training questions (not answers?) and train random forest and NN to predict topic
+    sanitize(questions)
