@@ -11,7 +11,7 @@ if __name__ == '__main__':
     print('Counts:', unique_counts)
     print('Mean question length:', mean_q_len)
     print('Mean answer length:', mean_a_len)
-    print('Standard deviation of question length:', std_q_len)
+    print('Standard deviation of question length:',  std_q_len)
     print('Standard deviation of answer length:', std_a_len)
     
     # TODO: Split in to training, validation, and test set - maybe use 5CV?
