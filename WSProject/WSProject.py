@@ -16,12 +16,28 @@ if __name__ == '__main__':
     print('Standard deviation of question length:', std_q_len)
     print('Standard deviation of answer length:', std_a_len)
     
+    ###############################
+    #### Perform classification ###
+    ###############################
+    print('Preprocessing dataset for random forest...')
     tokens = sanitize(questions)
-    bow = BoW(tokens)
-    x_train, y_train, x_test, y_test = split_dataset(bow, category_ids)
+    test_size=0.2
+    x_train, y_train, x_test, y_test = split_dataset(tokens, category_ids, test_size)
+    tokenizer = fit_tokenizer(x_train) # Fit the tokenizer on the training split
+    rf_x_train = get_bow(tokenizer, x_train) 
+    rf_x_test = get_bow(tokenizer, x_test)
 
+    """
     print('Performing random forest classification...')
-    best_params, train_f1, test_f1 = do_random_forest(x_train, y_train, x_test, y_test)
+    rf_pred, best_params, train_score = do_random_forest(rf_x_train, rf_y_train, x_test, y_test)
     print('Best parameters for random forest:', best_params)
-    print('Training f1 score for random forest', train_f1)
-    print('Test f1 score for random forest', test_f1)
+    print('Training f1 weigthed score for random forest', train_score)
+    print('Evaluating best model:', eval(y_test, rf_pred))
+    """
+
+    print('Preprocessing dataset for LSTM NN...')
+    test_size=0.1
+    x_train, y_train, x_test, y_test = split_dataset(tokens, category_ids, test_size)
+    nn_x_train, nn_x_test, nn_emb_layer = get_embedding_weights(x_train, x_test)
+    nn_pred = do_lstm(nn_emb_layer, nn_x_train, y_train, nn_x_test, y_test)
+    print('Evaluating best NN model:', eval(y_test, nn_pred))

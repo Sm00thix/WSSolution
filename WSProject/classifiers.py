@@ -1,6 +1,10 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.metrics import precision_score, f1_score, recall_score, accuracy_score
+from data_loader import get_embedding_weights
+import numpy as np
+from tensorflow import keras
+from sklearn.utils import class_weight
 
 def eval(y_true, y_pred):
     """
@@ -17,8 +21,8 @@ def eval(y_true, y_pred):
     accuracy = accuracy_score(y_true, y_pred)
     return ([precision_macro, precision_weighted, recall_macro, recall_weigthed, f1_macro, f1_weighted, accuracy])
 
-def split_dataset(x_set, y_set):
-    x_train, x_test, y_train, y_test = train_test_split(x_set, y_set, test_size=0.2)
+def split_dataset(x_set, y_set, test_size):
+    x_train, x_test, y_train, y_test = train_test_split(x_set, y_set, test_size=test_size)
     return (x_train, y_train, x_test, y_test)
 
 def do_random_forest(x_train, y_train, x_test, y_test):
@@ -40,9 +44,31 @@ def do_random_forest(x_train, y_train, x_test, y_test):
     cv = StratifiedKFold(n_splits=5, shuffle=True)
     gs = GridSearchCV(clf, param_grid, cv=cv, scoring='f1_weighted', n_jobs=-1, verbose=100)
     gs.fit(x_train, y_train)
-    train_f1 = gs.best_score_
-    test_f1 = gs.score(x_test, y_test)
+    train_score = gs.best_score_
     best_params = gs.best_params_
     y_pred = gs.predict(x_test)
-    return (y_pred, best_params, train_f1, test_f1)
+    return (y_pred, best_params, train_score)
 
+def do_lstm(emb_layer, x_train, y_train, x_test, y_test):
+    print(np.bincount(y_train))
+    class_weights = class_weight.compute_class_weight('balanced',
+                                                 np.unique(y_train),
+                                                 y_train)
+    y_train = keras.utils.to_categorical(y_train)
+    checkpoint = keras.callbacks.ModelCheckpoint('weights.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, mode='min', restore_best_weights=True)
+    callbacks_list = [checkpoint, earlystopping]
+    model = keras.models.Sequential()
+    embedding_layer = keras.layers.Embedding(np.amax(x_train) + 1,
+            emb_layer.shape[1],
+            weights=[emb_layer],
+            input_length=x_train.shape[1],
+            trainable=False)
+    model.add(embedding_layer)
+    model.add(keras.layers.LSTM(256))
+    model.add(keras.layers.Dropout(0.5))
+    model.add(keras.layers.Dense(5, activation='softmax'))
+    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=['accuracy'])
+    model.fit(x=x_train, y=y_train, epochs=100, validation_split=0.1, callbacks=callbacks_list, class_weight=class_weights)
+    y_pred = model.predict_classes(x=x_test)
+    return (y_pred)
