@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import re
 from nltk.corpus import stopwords
+from keras.preprocessing.text import Tokenizer
 
 def sanitize(documents):
     """
@@ -19,9 +20,15 @@ def sanitize(documents):
 
 
 
-def BoW(documents):
-    
-    pass
+def BoW(tokens):
+    """
+    tokens: array of list of lists of tokens\n
+    returns: no_docs * size_vocab matrix of bag of words
+    """
+    t = Tokenizer()
+    t.fit_on_texts(tokens)
+    bow = t.texts_to_matrix(tokens, mode='count')
+    return (bow)
 
 
 def stats(questions, answers, cats, ids):

@@ -1,4 +1,4 @@
-from data_loader import load_data, stats, sanitize
+from data_loader import *#load_data, stats, sanitize, BoW
 if __name__ == '__main__':
     ################################
     #### Load & preprocess data ####
@@ -14,7 +14,7 @@ if __name__ == '__main__':
     print('Standard deviation of question length:', std_q_len)
     print('Standard deviation of answer length:', std_a_len)
     
+    tokens = sanitize(questions)
+    bow = BoW(tokens)
     # TODO: Split in to training, validation, and test set - maybe use 5CV?
-    # TODO: Remove stop words?
     # TODO: Use BoW on training questions (not answers?) and train random forest and NN to predict topic
-    sanitize(questions)
