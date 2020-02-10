@@ -1,0 +1,48 @@
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.metrics import precision_score, f1_score, recall_score, accuracy_score
+
+def eval(y_true, y_pred):
+    """
+    Calculates different scoring metrics for a prediction.\n
+    y_true: the true labels\n
+    y_pred: the predicted labels\n
+    """
+    precision_macro = precision_score(y_true, y_pred, average='macro')
+    precision_weighted = precision_score(y_true, y_pred, average='weighted')
+    recall_macro = recall_score(y_true, y_pred, average='macro')
+    recall_weigthed = recall_score(y_true, y_pred, average='weighted')
+    f1_macro = f1_score(y_true, y_pred, average='macro')
+    f1_weighted = f1_score(y_true, y_pred, average='weighted')
+    accuracy = accuracy_score(y_true, y_pred)
+    return ([precision_macro, precision_weighted, recall_macro, recall_weigthed, f1_macro, f1_weighted, accuracy])
+
+def split_dataset(x_set, y_set):
+    x_train, x_test, y_train, y_test = train_test_split(x_set, y_set, test_size=0.2)
+    return (x_train, y_train, x_test, y_test)
+
+def do_random_forest(x_train, y_train, x_test, y_test):
+    """
+    Performs five-fold CV with a grid search of 100 different parameters, resulting in 500 different models.\n
+    x_train: the training data samples\n
+    y_train: the training data labels\n
+    x_test: the test data samples\n
+    y_test: the test data labels\n
+    """
+    clf = RandomForestClassifier()
+    no_features = x_train.shape[1]
+    param_grid = {
+            'n_estimators': [50 * i for i in range(1,11)],
+            'max_features': [int(round(i * no_features / 5)) for i in range (1,6)],
+            'oob_score': [True],
+            'class_weight': ['balanced', None]
+        }
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+    gs = GridSearchCV(clf, param_grid, cv=cv, scoring='f1_weighted', n_jobs=-1, verbose=100)
+    gs.fit(x_train, y_train)
+    train_f1 = gs.best_score_
+    test_f1 = gs.score(x_test, y_test)
+    best_params = gs.best_params_
+    y_pred = gs.predict(x_test)
+    return (y_pred, best_params, train_f1, test_f1)
+
