@@ -55,7 +55,7 @@ def do_lstm(emb_layer, x_train, y_train, x_test, y_test):
                                                  np.unique(y_train),
                                                  y_train)
     y_train = keras.utils.to_categorical(y_train)
-    checkpoint = keras.callbacks.ModelCheckpoint('weights.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+    checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
     earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, mode='min', restore_best_weights=True)
     callbacks_list = [checkpoint, earlystopping]
     model = keras.models.Sequential()

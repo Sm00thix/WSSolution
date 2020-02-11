@@ -116,7 +116,7 @@ def get_embedding_weights(train_docs, test_docs):
     # gensim_model.train(train_docs, total_examples=len(train_docs), epochs=20000)
     # wv = gensim_model.wv
     embedding_matrix = get_embedding_matrix(word2index_dict, gensim_model, vector_dim)
-    return (train_vecs, test_vecs, embedding_matrix)
+    return (train_vecs, test_vecs, embedding_matrix, word2index_dict, length)
 
 def sanitize(documents):
     """

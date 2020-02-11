@@ -1,5 +1,6 @@
 from data_loader import *
 from classifiers import *
+from evaluate_model import *
 if __name__ == '__main__':
     ################################
     #### Load & preprocess data ####
@@ -35,9 +36,12 @@ if __name__ == '__main__':
     print('Evaluating best model:', eval(y_test, rf_pred))
     """
 
-    print('Preprocessing dataset for LSTM NN...')
-    test_size=0.1
-    x_train, y_train, x_test, y_test = split_dataset(tokens, category_ids, test_size)
-    nn_x_train, nn_x_test, nn_emb_layer = get_embedding_weights(x_train, x_test)
-    nn_pred = do_lstm(nn_emb_layer, nn_x_train, y_train, nn_x_test, y_test)
-    print('Evaluating best NN model:', eval(y_test, nn_pred))
+    # print('Preprocessing dataset for LSTM NN...')
+    # test_size=0.1
+    # x_train, y_train, x_test, y_test = split_dataset(tokens, category_ids, test_size)
+    nn_x_train, nn_x_test, nn_emb_layer, dictionairy, vocab_length = get_embedding_weights(x_train, x_test)
+    # nn_pred = do_lstm(nn_emb_layer, nn_x_train, y_train, nn_x_test, y_test)
+    # print('Evaluating best NN model:', eval(y_test, nn_pred))
+    nn_x_eval = get_vecs(tokens, dictionairy, vocab_length)
+    res = eval_model('weights.hdf5', nn_x_train, category_ids)
+    print(res)
