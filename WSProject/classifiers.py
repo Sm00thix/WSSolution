@@ -68,7 +68,7 @@ def do_lstm(emb_layer, x_train, y_train, x_test, y_test):
     model.add(keras.layers.LSTM(256))
     model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(5, activation='softmax'))
-    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     model.fit(x=x_train, y=y_train, epochs=100, validation_split=0.1, callbacks=callbacks_list, class_weight=class_weights)
     y_pred = model.predict_classes(x=x_test)
     return (y_pred)

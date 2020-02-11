@@ -63,7 +63,7 @@ def get_vecs(docs, dictionairy, length):
     #        if j < 250:
     #            reviews_idxs[i].append(dictionairy[word])
     #            j += 1
-    return keras.preprocessing.sequence.pad_sequences(docs_idxs, maxlen=length)
+    return keras.preprocessing.sequence.pad_sequences(docs_idxs, maxlen=length, padding='pre')
 
 def get_vocab(docs):
     """
@@ -106,15 +106,15 @@ def get_embedding_matrix(dictionairy, model, vector_dim):
 def get_embedding_weights(train_docs, test_docs):
     vocab = get_vocab(train_docs)
     word2index_dict = word2index(vocab)
-    length = get_length(train_docs) # all_docs must include test set in order to perform the padding correctly
+    length = get_length(train_docs)
     train_vecs = get_vecs(train_docs, word2index_dict, length)
     test_vecs = get_vecs(test_docs, word2index_dict, length)
     vector_dim = 300
-    print("loading word embeddings...")
-    gensim_model = gensim.models.KeyedVectors.load_word2vec_format('C:/Users/Batma/Desktop/WS/GoogleNews-vectors-negative300.bin', binary=True)
-    #gensim_model = Word2Vec(train_docs, size=vector_dim, sg=1, min_count=1, window=20, workers=-1)
-    #gensim_model.train(train_docs, total_examples=len(train_docs), epochs=20)
-    #wv = gensim_model.wv
+    print("Loading word embeddings...")
+    gensim_model = gensim.models.KeyedVectors.load_word2vec_format('/Users/sm00thix/Documents/IR/Assignments/Assignment1/GoogleNews-vectors-negative300.bin', binary=True)
+    # gensim_model = Word2Vec(train_docs, size=vector_dim, sg=1, min_count=1, window=20, workers=-1)
+    # gensim_model.train(train_docs, total_examples=len(train_docs), epochs=20000)
+    # wv = gensim_model.wv
     embedding_matrix = get_embedding_matrix(word2index_dict, gensim_model, vector_dim)
     return (train_vecs, test_vecs, embedding_matrix)
 
