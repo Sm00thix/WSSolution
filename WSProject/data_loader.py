@@ -7,6 +7,7 @@ import gensim
 from nltk.corpus import stopwords
 from keras.preprocessing.text import Tokenizer
 from gensim.models import Word2Vec
+from gensim.test.utils import datapath
 
 def get_length(docs):
     """
@@ -111,7 +112,14 @@ def get_embedding_weights(train_docs, test_docs):
     test_vecs = get_vecs(test_docs, word2index_dict, length)
     vector_dim = 300
     print("Loading word embeddings...")
-    gensim_model = gensim.models.KeyedVectors.load_word2vec_format('/Users/sm00thix/Documents/IR/Assignments/Assignment1/GoogleNews-vectors-negative300.bin', binary=True)
+    filename = 'C:/Users/Batma/Desktop/WS/GoogleNews-vectors-negative300'
+    try:
+        gensim_model = gensim.models.KeyedVectors.load(filename, mmap='r')
+    except:
+        gensim_model = gensim.models.KeyedVectors.load_word2vec_format(filename + '.bin', binary=True)
+        gensim_model.wv.save(filename)
+
+    print("Done loading word embeddings!")
     # gensim_model = Word2Vec(train_docs, size=vector_dim, sg=1, min_count=1, window=20, workers=-1)
     # gensim_model.train(train_docs, total_examples=len(train_docs), epochs=20000)
     # wv = gensim_model.wv

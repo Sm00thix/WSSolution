@@ -22,7 +22,7 @@ def eval(y_true, y_pred):
     return ([precision_macro, precision_weighted, recall_macro, recall_weigthed, f1_macro, f1_weighted, accuracy])
 
 def split_dataset(x_set, y_set, test_size):
-    x_train, x_test, y_train, y_test = train_test_split(x_set, y_set, test_size=test_size)
+    x_train, x_test, y_train, y_test = train_test_split(x_set, y_set, stratify=y_set, test_size=test_size)
     return (x_train, y_train, x_test, y_test)
 
 def do_random_forest(x_train, y_train, x_test, y_test):
@@ -50,13 +50,15 @@ def do_random_forest(x_train, y_train, x_test, y_test):
     return (y_pred, best_params, train_score)
 
 def do_lstm(emb_layer, x_train, y_train, x_test, y_test):
+    x_train, y_train, x_val, y_val = split_dataset(x_train, y_train, 0.1)
     print(np.bincount(y_train))
     class_weights = class_weight.compute_class_weight('balanced',
                                                  np.unique(y_train),
                                                  y_train)
     y_train = keras.utils.to_categorical(y_train)
+    y_val = keras.utils.to_categorical(y_val)
     checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, mode='min', restore_best_weights=True)
+    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, mode='min', restore_best_weights=True)
     callbacks_list = [checkpoint, earlystopping]
     model = keras.models.Sequential()
     embedding_layer = keras.layers.Embedding(np.amax(x_train) + 1,
@@ -69,6 +71,6 @@ def do_lstm(emb_layer, x_train, y_train, x_test, y_test):
     model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(5, activation='softmax'))
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(x=x_train, y=y_train, epochs=100, validation_split=0.1, callbacks=callbacks_list, class_weight=class_weights)
+    model.fit(x=x_train, y=y_train, epochs=100, validation_data=(x_val, y_val), callbacks=callbacks_list, class_weight=class_weights, batch_size=len(x_train))
     y_pred = model.predict_classes(x=x_test)
     return (y_pred)
