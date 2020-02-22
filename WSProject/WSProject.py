@@ -43,8 +43,7 @@ def perform_nn(x_train, y_train, x_val, y_val, x_test, y_test):
     model = do_lstm(emb_layer, x_train, y_train, x_val, y_val, x_test, y_test)
     print('Done!')
     y_pred = model.predict_classes(x=x_test)
-    #print('Evaluating best NN model:', eval(y_test, y_pred))
-    return (eval(y_test, y_pred))
+    print('Evaluating best NN model:', eval(y_test, y_pred))
 
 if __name__ == '__main__':
     #np.random.seed(27)
