@@ -39,7 +39,7 @@ def get_vecs(docs, dictionairy, length):
     calculates their indexes in\\
     the word2vec model
     Parameters:\\
-    reviews: The reviews as a list\\
+    docs: The documents as a list\\
     of lists of words\\
     dictionairy: word:index of words\\
     in the reviews\\
@@ -47,8 +47,6 @@ def get_vecs(docs, dictionairy, length):
     Returns:\\
     A list of lists of indexes
     """
-    #docs_idxs = [[dictionairy[word] for word in doc] for doc in docs]
-
     docs_idxs = [[] for i in range(len(docs))]
     for i in range(len(docs)):
         for word in docs[i]:
@@ -56,14 +54,6 @@ def get_vecs(docs, dictionairy, length):
                 docs_idxs[i].append(dictionairy[word])
             except:
                 docs_idxs[i].append(0)
-
-    #reviews_idxs = [[] for i in range(len(reviews))]
-    #for i in range(len(reviews)):
-    #    j = 0
-    #    for word in reviews[i]:
-    #        if j < 250:
-    #            reviews_idxs[i].append(dictionairy[word])
-    #            j += 1
     return keras.preprocessing.sequence.pad_sequences(docs_idxs, maxlen=length, padding='pre')
 
 def get_vocab(docs):
