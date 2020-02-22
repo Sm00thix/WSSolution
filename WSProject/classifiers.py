@@ -65,9 +65,9 @@ def do_lstm(emb_layer, x_train, y_train, x_val, y_val, x_test, y_test):
                                                  y_train)
     y_train = keras.utils.to_categorical(y_train)
     y_val = keras.utils.to_categorical(y_val)
-    checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, mode='min', restore_best_weights=True)
-    callbacks_list = [checkpoint, earlystopping]
+    #checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=30, mode='min', restore_best_weights=True)
+    callbacks_list = [earlystopping]
     model = keras.models.Sequential()
     embedding_layer = keras.layers.Embedding(np.amax(x_train) + 1,
             emb_layer.shape[1],
@@ -79,5 +79,5 @@ def do_lstm(emb_layer, x_train, y_train, x_val, y_val, x_test, y_test):
     model.add(keras.layers.Dropout(0.5))
     model.add(keras.layers.Dense(5, activation='softmax'))
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(x=x_train, y=y_train, epochs=100, validation_data=(x_val, y_val), callbacks=callbacks_list, class_weight=class_weights, batch_size=len(x_train))
+    model.fit(x=x_train, y=y_train, epochs=200, validation_data=(x_val, y_val), callbacks=callbacks_list, class_weight=class_weights, batch_size=len(x_train))
     return (model)
