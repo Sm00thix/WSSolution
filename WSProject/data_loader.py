@@ -104,11 +104,12 @@ def get_embedding_matrix(dictionairy, model, vector_dim):
     print('Non null word embeddings: %d' % np.sum(np.sum(embedding_matrix, axis=1) != 0))
     return embedding_matrix
 
-def get_embedding_weights(train_docs, test_docs):
+def get_embedding_weights(train_docs, val_docs, test_docs):
     vocab = get_vocab(train_docs)
     word2index_dict = word2index(vocab)
     length = get_length(train_docs)
     train_vecs = get_vecs(train_docs, word2index_dict, length)
+    val_vecs = get_vecs(val_docs, word2index_dict, length)
     test_vecs = get_vecs(test_docs, word2index_dict, length)
     vector_dim = 300
     print("Loading word embeddings...")
@@ -120,11 +121,8 @@ def get_embedding_weights(train_docs, test_docs):
         gensim_model.wv.save(filename)
 
     print("Done loading word embeddings!")
-    # gensim_model = Word2Vec(train_docs, size=vector_dim, sg=1, min_count=1, window=20, workers=-1)
-    # gensim_model.train(train_docs, total_examples=len(train_docs), epochs=20000)
-    # wv = gensim_model.wv
     embedding_matrix = get_embedding_matrix(word2index_dict, gensim_model, vector_dim)
-    return (train_vecs, test_vecs, embedding_matrix, word2index_dict, length)
+    return (train_vecs, val_vecs, test_vecs, embedding_matrix, word2index_dict, length)
 
 def sanitize(documents):
     """

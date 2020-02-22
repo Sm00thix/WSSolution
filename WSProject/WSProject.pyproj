@@ -27,7 +27,6 @@
     <Compile Include="classifiers.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="evaluate_model.py" />
     <Compile Include="WSProject.py" />
   </ItemGroup>
   <ItemGroup>

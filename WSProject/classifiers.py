@@ -1,5 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold, PredefinedSplit
 from sklearn.metrics import precision_score, f1_score, recall_score, accuracy_score
 from data_loader import get_embedding_weights
 import numpy as np
@@ -21,15 +21,21 @@ def eval(y_true, y_pred):
     accuracy = accuracy_score(y_true, y_pred)
     return ([precision_macro, precision_weighted, recall_macro, recall_weigthed, f1_macro, f1_weighted, accuracy])
 
-def split_dataset(x_set, y_set, test_size):
-    x_train, x_test, y_train, y_test = train_test_split(x_set, y_set, stratify=y_set, test_size=test_size)
-    return (x_train, y_train, x_test, y_test)
-
-def do_random_forest(x_train, y_train, x_test, y_test):
+def split_dataset(x_set, y_set, test_and_val_size):
     """
-    Performs five-fold CV with a grid search of 100 different parameters, resulting in 500 different models.\n
+    Splits the dataset in to training, validation and test samples. Validation and test samples each consist of a fraction of the enite dataset equal to test_and_val_size.
+    """
+    x_train, x_test, y_train, y_test = train_test_split(x_set, y_set, stratify=y_set, test_size=test_and_val_size)
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, stratify=y_train, test_size=(len(x_test) / len(x_train)))
+    return (x_train, y_train, x_val, y_val, x_test, y_test)
+
+def do_random_forest(x_train, y_train, x_val, y_val, x_test, y_test):
+    """
+    Performs validation with a grid search of 100 different parameters, resulting in 100 different models.\n
     x_train: the training data samples\n
     y_train: the training data labels\n
+    x_val: the validation data samples\n
+    y_val: the validation data labels\n
     x_test: the test data samples\n
     y_test: the test data labels\n
     """
@@ -41,17 +47,19 @@ def do_random_forest(x_train, y_train, x_test, y_test):
             'oob_score': [True],
             'class_weight': ['balanced', None]
         }
-    cv = StratifiedKFold(n_splits=5, shuffle=True)
-    gs = GridSearchCV(clf, param_grid, cv=cv, scoring='f1_weighted', n_jobs=-1, verbose=100)
+    largest_train_index = len(x_train)
+    train_indices = np.array([-1 for i in range(largest_train_index)])
+    x_train = np.concatenate((x_train, x_val), axis=0)
+    y_train = np.concatenate((y_train, y_val), axis=0)
+    val_indices = np.array([0 for i in range(largest_train_index, len(x_train))])
+    fold_indices = np.concatenate((train_indices, val_indices), axis=0)
+    ps = PredefinedSplit(fold_indices)
+    gs = GridSearchCV(clf, param_grid, cv=ps, scoring='f1_weighted', n_jobs=-1, verbose=100)
     gs.fit(x_train, y_train)
-    train_score = gs.best_score_
     best_params = gs.best_params_
-    y_pred = gs.predict(x_test)
-    return (y_pred, best_params, train_score)
+    return (gs, best_params)
 
-def do_lstm(emb_layer, x_train, y_train, x_test, y_test):
-    x_train, y_train, x_val, y_val = split_dataset(x_train, y_train, 0.1)
-    print(np.bincount(y_train))
+def do_lstm(emb_layer, x_train, y_train, x_val, y_val, x_test, y_test):
     class_weights = class_weight.compute_class_weight('balanced',
                                                  np.unique(y_train),
                                                  y_train)
@@ -72,5 +80,4 @@ def do_lstm(emb_layer, x_train, y_train, x_test, y_test):
     model.add(keras.layers.Dense(5, activation='softmax'))
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     model.fit(x=x_train, y=y_train, epochs=100, validation_data=(x_val, y_val), callbacks=callbacks_list, class_weight=class_weights, batch_size=len(x_train))
-    y_pred = model.predict_classes(x=x_test)
-    return (y_pred)
+    return (model)
