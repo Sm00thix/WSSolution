@@ -1,9 +1,11 @@
+import os
 import jsonlines as jl
 import numpy as np
 import pandas as pd
 import re
 import keras
 import gensim
+import krippendorff
 from nltk.corpus import stopwords
 from keras.preprocessing.text import Tokenizer
 from gensim.models import Word2Vec
@@ -15,7 +17,6 @@ def get_length(docs):
     returns: the length of the longest document\n
     """
     length = 0
-    #for docset in docs:
     for doc in docs:
         doc_len = len(doc)
         length = doc_len if doc_len > length else length
@@ -88,7 +89,6 @@ def get_embedding_matrix(dictionairy, model, vector_dim):
     embedding_matrix = np.zeros((length, vector_dim))
     for word, i in dictionairy.items():
         if word in model.vocab:
-            #embedding_matrix[i] = model[word]
             embedding_matrix[i] = model.word_vec(word)
     print('Null word embeddings: %d' % np.sum(np.sum(embedding_matrix, axis=1) == 0))
     print('Non null word embeddings: %d' % np.sum(np.sum(embedding_matrix, axis=1) != 0))
@@ -103,7 +103,7 @@ def get_embedding_weights(train_docs, val_docs, test_docs):
     test_vecs = get_vecs(test_docs, word2index_dict, length)
     vector_dim = 300
     print("Loading word embeddings...")
-    filename = 'C:/Users/Batma/Desktop/WS/GoogleNews-vectors-negative300'
+    filename = 'WS/GoogleNews-vectors-negative300'
     try:
         gensim_model = gensim.models.KeyedVectors.load(filename, mmap='r')
     except:
@@ -183,3 +183,65 @@ def load_data(path):
        category_ids = v_int(vals[..., 2])
        categories = vals[..., 3]
        return (questions, answers, category_ids, categories)
+
+def load_cs_csvs(path):
+    """
+    path: path to the directory containing the csv files\n
+    returns: a single pandas dataframe resulting from concatenating the loaded csv files\n
+    """
+    csv_files = [file for file in os.listdir(path) if file.endswith('.csv')]
+    lol = pd.read_csv(path+'/'+'WS1002.csv')
+    return pd.concat([pd.read_csv(path+'/'+file, error_bad_lines=False, warn_bad_lines=True) for file in csv_files], ignore_index=True)
+
+def majority_vote(ans):
+    """
+    Takes as input an array of answers and outputs the majority vote. Ties are broken by a random choice between the tie makers.\n
+    """
+    uniq_ans, counts = np.unique(ans, return_counts=True)
+    max_vals = uniq_ans[counts == np.max(counts)]
+    tie_breaker = np.random.randint(0, len(max_vals))
+    res = max_vals[tie_breaker]
+    return (res)
+
+def clean_dataframe(df):
+    rgx = r'[^\n]*\n.'
+    df['Question'].replace(to_replace=rgx, value='', inplace=True, regex=True) # Remove the broken values from WS1002.csv
+    v_strip = np.vectorize(str.strip)
+    v_lower = np.vectorize(str.lower)
+    new_df = pd.DataFrame(columns=df.columns)
+    list_of_series = []
+    non_facts = 0
+    total_a_labels = []
+    total_q_ratings = []
+    total_a_quals = []
+    for q_id in np.unique(df['questionId']):
+        sub_df = df.loc[df['questionId'] == q_id]
+
+        facts = sub_df['Factual'].to_numpy(dtype=float)
+        mv_fact = majority_vote(facts)
+
+        # Ignore non-factual questions
+        if mv_fact != 1:
+            non_facts += 1
+            continue
+
+        question, a_url = sub_df.iloc[0,:-5]
+
+        a_labels = v_strip(v_lower(sub_df['Answer Label'].to_numpy(dtype=str)))
+        q_ratings = sub_df['Question Rating'].to_numpy(dtype=float)
+        a_quals = sub_df['Answer Quality'].to_numpy(dtype=float)
+
+        total_a_labels.append(a_labels)
+        total_q_ratings.append(q_ratings)
+        total_a_quals.append(a_quals)
+
+        mv_a_label = majority_vote(a_labels)
+        mv_q_rating = majority_vote(q_ratings)
+        mv_a_qual = majority_vote(a_quals)
+
+        series = pd.Series([question, a_url, mv_a_label, mv_q_rating, mv_a_qual, mv_fact, q_id], index=new_df.columns)
+        list_of_series.append(series)
+    new_df = new_df.append(list_of_series, ignore_index=True)
+    return
+    # use old df for reliability rating
+    # perform some stats - use the lists as before-mv and use new_df as after-mv

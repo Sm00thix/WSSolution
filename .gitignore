@@ -338,3 +338,6 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+/WSProject/WS/GoogleNews-vectors-negative300
+/WSProject/WS/GoogleNews-vectors-negative300.bin
+/WSProject/WS/GoogleNews-vectors-negative300.vectors.npy

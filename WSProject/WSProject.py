@@ -46,9 +46,9 @@ def perform_nn(x_train, y_train, x_val, y_val, x_test, y_test):
     print('Evaluating best NN model:', eval(y_test, y_pred))
 
 if __name__ == '__main__':
-    #np.random.seed(27)
-    #rn.seed(42)
-    #tf.random.set_seed(69)
+    np.random.seed(27)
+    rn.seed(42)
+    tf.random.set_seed(69)
     #np.random.seed(221347)
     #rn.seed(421342)
     #tf.random.set_seed(691234)
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     ################################
     #### Load & preprocess data ####
     ################################
-    questions, category_ids = perform_loading()
+    #questions, category_ids = perform_loading()
     
     ###############################
     ####### Visualize data ########
@@ -66,11 +66,17 @@ if __name__ == '__main__':
 
     ###############################
     #### Perform classification ###
-    ###############################=
-    print('Performing general preprocessing...')
-    tokens = sanitize(questions)
-    test_and_val_size=0.1
-    x_train, y_train, x_val, y_val, x_test, y_test = split_dataset(tokens, category_ids, test_and_val_size)
-    print('Done!')
-    perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
-    perform_nn(x_train, y_train, x_val, y_val, x_test, y_test)
+    ###############################
+    #print('Performing general preprocessing...')
+    #tokens = sanitize(questions)
+    #test_and_val_size=0.1
+    #x_train, y_train, x_val, y_val, x_test, y_test = split_dataset(tokens, category_ids, test_and_val_size)
+    #print('Done!')
+    #perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
+    #perform_nn(x_train, y_train, x_val, y_val, x_test, y_test)
+
+    #############################
+    ####### Crowdsourcing #######
+    #############################
+    df = load_cs_csvs('WS/submissions_fixed_anonymized')
+    clean_dataframe(df)

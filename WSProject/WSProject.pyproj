@@ -31,12 +31,48 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="WS\" />
+    <Folder Include="WS\submissions_fixed_anonymized\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="WS\README.txt" />
+    <Content Include="WS\recommender_test.tsv" />
+    <Content Include="WS\recommender_train.tsv" />
     <Content Include="WS\simple_baseline.png" />
+    <Content Include="WS\submissions_fixed_anonymized\.DS_Store" />
+    <Content Include="WS\submissions_fixed_anonymized\WS1001.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS1002.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS1234.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS1489.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS1846.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS2221.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS2222.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS2398.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS2414.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS2424.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS2776.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS3895.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS4098.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS4444.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS5205.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS5432.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS5556.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS61222.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS6345.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS6565.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS7445.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS7717.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS7770.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS7777.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS8745.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS8762.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS9000.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS9453.csv" />
+    <Content Include="WS\submissions_fixed_anonymized\WS9830.csv" />
+    <Content Include="WS\testing_ids.txt" />
+    <Content Include="WS\training_ids.txt" />
     <Content Include="WS\WebScienceFinalProjectDescription.pdf" />
     <Content Include="WS\web_science_dataset.jsonl" />
+    <Content Include="WS\web_science_dataset_with_labels.jsonl" />
     <Content Include="WS\WS2020-assessment.pdf" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
