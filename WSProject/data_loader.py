@@ -193,7 +193,7 @@ def load_cs_csvs(path):
     lol = pd.read_csv(path+'/'+'WS1002.csv')
     return pd.concat([pd.read_csv(path+'/'+file, error_bad_lines=False, warn_bad_lines=True) for file in csv_files], ignore_index=True)
 
-def majority_vote(ans):
+def mv_tiebreaker(ans):
     """
     Takes as input an array of answers and outputs the majority vote. Ties are broken by a random choice between the tie makers.\n
     """
@@ -203,7 +203,15 @@ def majority_vote(ans):
     res = max_vals[tie_breaker]
     return (res)
 
-def clean_dataframe(df):
+def mv_average(ans):
+    """
+    Takes as input an array of answers and outputs the majority vote. Ties are broken by an average between the tie makers.\n
+    """
+    uniq_ans, counts = np.unique(ans, return_counts=True)
+    max_vals = uniq_ans[counts == np.max(counts)]
+    return (np.average(max_vals))
+
+def clean_and_stats_dataframe(df):
     rgx = r'[^\n]*\n.'
     df['Question'].replace(to_replace=rgx, value='', inplace=True, regex=True) # Remove the broken values from WS1002.csv
     v_strip = np.vectorize(str.strip)
@@ -218,7 +226,7 @@ def clean_dataframe(df):
         sub_df = df.loc[df['questionId'] == q_id]
 
         facts = sub_df['Factual'].to_numpy(dtype=float)
-        mv_fact = majority_vote(facts)
+        mv_fact = mv_tiebreaker(facts)
 
         # Ignore non-factual questions
         if mv_fact != 1:
@@ -231,17 +239,64 @@ def clean_dataframe(df):
         q_ratings = sub_df['Question Rating'].to_numpy(dtype=float)
         a_quals = sub_df['Answer Quality'].to_numpy(dtype=float)
 
-        total_a_labels.append(a_labels)
-        total_q_ratings.append(q_ratings)
-        total_a_quals.append(a_quals)
+        total_a_labels.append(a_labels.tolist())
+        total_q_ratings.append(q_ratings.tolist())
+        total_a_quals.append(a_quals.tolist())
 
-        mv_a_label = majority_vote(a_labels)
-        mv_q_rating = majority_vote(q_ratings)
-        mv_a_qual = majority_vote(a_quals)
+        mv_a_label = mv_tiebreaker(a_labels)
+        mv_q_rating = mv_average(q_ratings)
+        mv_a_qual = mv_average(a_quals)
 
         series = pd.Series([question, a_url, mv_a_label, mv_q_rating, mv_a_qual, mv_fact, q_id], index=new_df.columns)
         list_of_series.append(series)
+        # end for
+
     new_df = new_df.append(list_of_series, ignore_index=True)
+
+    total_a_labels = [item for sublist in total_a_labels for item in sublist]
+    total_q_ratings = [item for sublist in total_q_ratings for item in sublist]
+    total_a_quals = [item for sublist in total_a_quals for item in sublist]
+    mean_q_rating = np.mean(total_q_ratings)
+    std_q_rating = np.std(total_q_ratings)
+    mean_a_qual = np.mean(total_a_quals)
+    std_a_qual = np.std(total_a_quals)
+
+    total_qrs = len(total_q_ratings)
+    total_aqs = len(total_a_quals)
+
+    qr_ones = total_q_ratings.count(1.0)
+    qr_twos = total_q_ratings.count(2.0)
+    qr_threes = total_q_ratings.count(3.0)
+
+    aq_ones = total_a_quals.count(1.0)
+    aq_twos = total_a_quals.count(2.0)
+    aq_threes = total_a_quals.count(3.0)
+
+    al_yes = total_a_labels.count('yes')
+    al_no = total_a_labels.count('no')
+    al_na = total_a_labels.count('na')
+
+    print('Statistics for all crowdsourced data...')
+    print('Statistics for question ratings:')
+    print('Mean question rating:', mean_q_rating)
+    print('Std. of question rating:', std_q_rating)
+    print('Number of question rating 1\'s:', qr_ones)
+    print('Number of question rating 2\'s:', qr_twos)
+    print('Number of question rating 3\'s:', qr_threes)
+    print('Statistics for answer qualities:')
+    print('Mean answer quality:', mean_a_qual)
+    print('Std. of answer quality:', std_a_qual)
+    print('Number of answer rating 1\'s:', aq_ones)
+    print('Number of answer rating 2\'s:', aq_twos)
+    print('Number of answer rating 3\'s:', aq_threes)
+    print('Statistics for answer labels:')
+    print('Number yes-labels given', al_yes)
+    print('Number of no-labels given', al_no)
+    print('Number of na-labels given', al_na)
+
+    print('Statistics for cleaned dataset...')
+    # TODO:
+
     return
-    # use old df for reliability rating
+    # use old df for reliability rating - compute krippendorffs alpha for each label that has been assigned by crowdworkers
     # perform some stats - use the lists as before-mv and use new_df as after-mv

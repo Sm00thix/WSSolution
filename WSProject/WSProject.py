@@ -79,4 +79,4 @@ if __name__ == '__main__':
     ####### Crowdsourcing #######
     #############################
     df = load_cs_csvs('WS/submissions_fixed_anonymized')
-    clean_dataframe(df)
+    clean_and_stats_dataframe(df)
