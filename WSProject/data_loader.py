@@ -48,14 +48,19 @@ def get_vecs(docs, dictionairy, length):
     Returns:\\
     A list of lists of indexes
     """
+    system_max = 750
     docs_idxs = [[] for i in range(len(docs))]
     for i in range(len(docs)):
+        j = 0
         for word in docs[i]:
-            try:
-                docs_idxs[i].append(dictionairy[word])
-            except:
-                docs_idxs[i].append(0)
-    return keras.preprocessing.sequence.pad_sequences(docs_idxs, maxlen=length, padding='pre')
+            if j < system_max:
+                try:
+                    docs_idxs[i].append(dictionairy[word])
+                    j += 1
+                except:
+                    docs_idxs[i].append(0)
+                    j += 1
+    return keras.preprocessing.sequence.pad_sequences(docs_idxs, maxlen=min(length, system_max), padding='pre')
 
 def get_vocab(docs):
     """
@@ -170,19 +175,31 @@ def stats(questions, answers, cats, ids):
 
 
 
-def load_data(path):
+def load_data(path, labels=False):
     """
     path: path to jsonl file\n
     returns: three numpy arrays of questions, answers, and categoryIds\n
     """
     with jl.open(path) as reader:
-       vals = np.asarray([[obj['question'], obj['answer'], obj['categoryId'], obj['category']] for obj in reader])
+       if labels:
+           vals = np.asarray([[obj['question'], obj['answer'], obj['categoryId'], obj['category'], obj['questionId'], obj['answerLabel'], obj['answerQuality']] for obj in reader])
+       else:
+           vals = np.asarray([[obj['question'], obj['answer'], obj['categoryId'], obj['category']] for obj in reader])
+       v_int = np.vectorize(int)
        questions = vals[..., 0]
        answers = vals[..., 1]
-       v_int = np.vectorize(int)
        category_ids = v_int(vals[..., 2])
        categories = vals[..., 3]
-       return (questions, answers, category_ids, categories)
+       if labels:
+           question_ids = v_int(vals[..., 4])
+           answer_labels = vals[..., 5]
+           answer_qualities = v_int(vals[..., 6])
+           return (questions, answers, category_ids, categories, question_ids, answer_labels, answer_qualities)
+       else:
+           return (questions, answers, category_ids, categories)
+
+
+
 
 def load_cs_csvs(path):
     """
@@ -190,7 +207,6 @@ def load_cs_csvs(path):
     returns: a single pandas dataframe resulting from concatenating the loaded csv files\n
     """
     csv_files = [file for file in os.listdir(path) if file.endswith('.csv')]
-    lol = pd.read_csv(path+'/'+'WS1002.csv')
     return pd.concat([pd.read_csv(path+'/'+file, error_bad_lines=False, warn_bad_lines=True) for file in csv_files], ignore_index=True)
 
 def mv_tiebreaker(ans):
@@ -214,14 +230,17 @@ def mv_average(ans):
 def clean_and_stats_dataframe(df):
     rgx = r'[^\n]*\n.'
     df['Question'].replace(to_replace=rgx, value='', inplace=True, regex=True) # Remove the broken values from WS1002.csv
-    v_strip = np.vectorize(str.strip)
-    v_lower = np.vectorize(str.lower)
+    #v_strip = np.vectorize(str.strip)
+    #v_lower = np.vectorize(str.lower)
+    df['Answer Label'] = df['Answer Label'].astype(str).apply(str.strip).apply(str.lower)
+    df['Answer Label'].replace(to_replace='nan', value='na', inplace=True)
     new_df = pd.DataFrame(columns=df.columns)
     list_of_series = []
     non_facts = 0
     total_a_labels = []
     total_q_ratings = []
     total_a_quals = []
+    print('Cleaning dataset...')
     for q_id in np.unique(df['questionId']):
         sub_df = df.loc[df['questionId'] == q_id]
 
@@ -235,7 +254,8 @@ def clean_and_stats_dataframe(df):
 
         question, a_url = sub_df.iloc[0,:-5]
 
-        a_labels = v_strip(v_lower(sub_df['Answer Label'].to_numpy(dtype=str)))
+        #a_labels = v_strip(v_lower(sub_df['Answer Label'].to_numpy(dtype=str)))
+        a_labels = sub_df['Answer Label'].to_numpy(dtype=str)
         q_ratings = sub_df['Question Rating'].to_numpy(dtype=float)
         a_quals = sub_df['Answer Quality'].to_numpy(dtype=float)
 
@@ -250,8 +270,10 @@ def clean_and_stats_dataframe(df):
         series = pd.Series([question, a_url, mv_a_label, mv_q_rating, mv_a_qual, mv_fact, q_id], index=new_df.columns)
         list_of_series.append(series)
         # end for
-
+    print('Done!')
     new_df = new_df.append(list_of_series, ignore_index=True)
+
+    print('Computing some statistics...')
 
     total_a_labels = [item for sublist in total_a_labels for item in sublist]
     total_q_ratings = [item for sublist in total_q_ratings for item in sublist]
@@ -276,27 +298,137 @@ def clean_and_stats_dataframe(df):
     al_no = total_a_labels.count('no')
     al_na = total_a_labels.count('na')
 
-    print('Statistics for all crowdsourced data...')
+    cleaned_qr_ones = len(new_df.loc[new_df['Question Rating'] == 1])
+    cleaned_qr_one_fives = len(new_df.loc[new_df['Question Rating'] == 1.5])
+    cleaned_qr_twos = len(new_df.loc[new_df['Question Rating'] == 2])
+    cleaned_qr_two_fives = len(new_df.loc[new_df['Question Rating'] == 2.5])
+    cleaned_qr_threes = len(new_df.loc[new_df['Question Rating'] == 3])
+
+    cleaned_aq_ones = len(new_df.loc[new_df['Answer Quality'] == 1])
+    cleaned_aq_one_fives = len(new_df.loc[new_df['Answer Quality'] == 1.5])
+    cleaned_aq_twos = len(new_df.loc[new_df['Answer Quality'] == 2])
+    cleaned_aq_two_fives = len(new_df.loc[new_df['Answer Quality'] == 2.5])
+    cleaned_aq_threes = len(new_df.loc[new_df['Answer Quality'] == 3])
+
+    cleaned_al_yes = len(new_df.loc[new_df['Answer Label'] == 'yes'])
+    cleaned_al_no = len(new_df.loc[new_df['Answer Label'] == 'no'])
+    cleaned_al_na = len(new_df.loc[new_df['Answer Label'] == 'na'])
+
+    cleaned_qrs = new_df['Question Rating'].to_numpy(dtype=float)
+    mean_cleaned_qr = np.mean(cleaned_qrs)
+    std_cleaned_qr = np.std(cleaned_qrs)
+
+    cleaned_aqs = new_df['Answer Quality'].to_numpy(dtype=float)
+    mean_cleaned_aq = np.mean(cleaned_aqs)
+    std_cleaned_aq = np.std(cleaned_aqs)
+
+    print('Computing Krippendorffs Alpha...')
+    krippen_alpha_fact = krippen_alpha(df, 'Factual', 'nominal')
+    krippen_alpha_qr = krippen_alpha(df, 'Question Rating', 'interval')
+    krippen_alpha_aq = krippen_alpha(df, 'Answer Quality', 'interval')
+    krippen_alpha_al = krippen_alpha(df, 'Answer Label', 'nominal')
+    print()
+    print()
+    print('Statistics for segregated dataset:')
+    print()
     print('Statistics for question ratings:')
     print('Mean question rating:', mean_q_rating)
     print('Std. of question rating:', std_q_rating)
     print('Number of question rating 1\'s:', qr_ones)
     print('Number of question rating 2\'s:', qr_twos)
     print('Number of question rating 3\'s:', qr_threes)
+    print()
     print('Statistics for answer qualities:')
     print('Mean answer quality:', mean_a_qual)
     print('Std. of answer quality:', std_a_qual)
     print('Number of answer rating 1\'s:', aq_ones)
     print('Number of answer rating 2\'s:', aq_twos)
     print('Number of answer rating 3\'s:', aq_threes)
+    print()
     print('Statistics for answer labels:')
     print('Number yes-labels given', al_yes)
     print('Number of no-labels given', al_no)
     print('Number of na-labels given', al_na)
-
-    print('Statistics for cleaned dataset...')
+    print()
+    print('Krippendorff\'s alpha coefficients for:')
+    print('Factual:', krippen_alpha_fact)
+    print('Question Rating:', krippen_alpha_qr)
+    print('Answer Quality:', krippen_alpha_aq)
+    print('Answer Label:', krippen_alpha_al)
+    print()
+    print()
+    print('Statistics for aggregated dataset:')
+    print()
+    print('Number of non-factual questions that have been disregarded in the following:', non_facts)
+    print('Mean question rating:', mean_cleaned_qr)
+    print('Std. of question rating:', std_cleaned_qr)
+    print('Number of question rating 1\'s:', cleaned_qr_ones)
+    print('Number of question rating 1.5\'s:', cleaned_qr_one_fives)
+    print('Number of question rating 2\'s:', cleaned_qr_twos)
+    print('Number of question rating 2.5\'s:', cleaned_qr_two_fives)
+    print('Number of question rating 3\'s:', cleaned_qr_threes)
+    print()
+    print('Statistics for answer qualities:')
+    print('Mean answer quality:', mean_cleaned_aq)
+    print('Std. of answer quality:', std_cleaned_aq)
+    print('Number of answer rating 1\'s:', cleaned_aq_ones)
+    print('Number of answer rating 1.5\'s:', cleaned_aq_one_fives)
+    print('Number of answer rating 2\'s:', cleaned_aq_twos)
+    print('Number of answer rating 2.5\'s:', cleaned_aq_two_fives)
+    print('Number of answer rating 3\'s:', cleaned_aq_threes)
+    print()
+    print('Statistics for answer labels:')
+    print('Number yes-labels given', cleaned_al_yes)
+    print('Number of no-labels given', cleaned_al_no)
+    print('Number of na-labels given', cleaned_al_na)
+    
     # TODO:
-
-    return
-    # use old df for reliability rating - compute krippendorffs alpha for each label that has been assigned by crowdworkers
     # perform some stats - use the lists as before-mv and use new_df as after-mv
+
+    #wiki_arr = np.array([
+    #    [np.nan, np.nan, np.nan, np.nan, np.nan, 3, 4, 1, 2, 1, 1, 3, 3, np.nan, 3],
+    #    [1, np.nan, 2, 1, 3, 3, 4, 3, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+    #    [np.nan, np.nan, 2, 1, 3, 4, 4, np.nan, 2, 1, 1, 3, 3, np.nan, 4]
+    #    ])
+    #wiki_arr_2 = np.zeros((15, 4))
+    #wiki_arr_2[0] = [1, 0, 0, 0]
+    #wiki_arr_2[2] = [0, 2, 0, 0]
+    #wiki_arr_2[3] = [2, 0, 0, 0]
+    #wiki_arr_2[4] = [0, 0, 2, 0]
+    #wiki_arr_2[5] = [0, 0, 2, 1]
+    #wiki_arr_2[6] = [0, 0, 0, 3]
+    #wiki_arr_2[7] = [1, 0, 1, 0]
+    #wiki_arr_2[8] = [0, 2, 0, 0]
+    #wiki_arr_2[9] = [2, 0, 0, 0]
+    #wiki_arr_2[10] = [2, 0, 0, 0]
+    #wiki_arr_2[11] = [0, 0, 2, 0]
+    #wiki_arr_2[12] = [0, 0, 2, 0]
+    #wiki_arr_2[14] = [0, 0, 1, 1]
+
+    #print(krippendorff.alpha(reliability_data=wiki_arr, level_of_measurement='interval'))
+    #print(krippendorff.alpha(reliability_data=wiki_arr, level_of_measurement='nominal'))
+
+    #print(krippendorff.alpha(value_counts=wiki_arr_2, level_of_measurement='interval'))
+    #print(krippendorff.alpha(value_counts=wiki_arr_2, level_of_measurement='nominal'))
+    return
+
+def krippen_alpha(df, metric, lom):
+    """
+    Given a dataframe, a column in that dataframe, and a level of measurement, compute Krippendorff's Alpha for that column and level of measurement.
+    """
+    metric_vals = np.unique(df[metric])
+
+    def metric_vals_to_indices(vals, mvals):
+        indices = [np.nonzero(mvals==val)[0][0] for val in vals]
+        return np.array(indices)
+
+    uniq_ids = np.unique(df['questionId'])
+    shape = (uniq_ids.shape[0], metric_vals.shape[0])
+    value_counts = np.zeros(shape, dtype=float)
+    for i, q_id in zip(range(len(uniq_ids)), uniq_ids):
+        assignments = df.query('questionId==@q_id')[metric].to_numpy()
+        vals, counts = np.unique(assignments, return_counts=True)
+        indices = metric_vals_to_indices(vals, metric_vals)
+        value_counts[i][indices] += counts
+    alpha = krippendorff.alpha(value_counts=value_counts, value_domain=metric_vals.tolist(), level_of_measurement=lom)
+    return alpha

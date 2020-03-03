@@ -59,25 +59,48 @@ def do_random_forest(x_train, y_train, x_val, y_val, x_test, y_test):
     best_params = gs.best_params_
     return (gs, best_params)
 
-def do_lstm(emb_layer, x_train, y_train, x_val, y_val, x_test, y_test):
+def do_lstm(emb_layer, x_train, y_train, x_val, y_val, max_x, output_size):
     class_weights = class_weight.compute_class_weight('balanced',
                                                  np.unique(y_train),
                                                  y_train)
     y_train = keras.utils.to_categorical(y_train)
     y_val = keras.utils.to_categorical(y_val)
     #checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=30, mode='min', restore_best_weights=True)
+    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=60, mode='min', restore_best_weights=True)
     callbacks_list = [earlystopping]
     model = keras.models.Sequential()
-    embedding_layer = keras.layers.Embedding(np.amax(x_train) + 1,
+    embedding_layer = keras.layers.Embedding(max_x + 1,
             emb_layer.shape[1],
             weights=[emb_layer],
             input_length=x_train.shape[1],
             trainable=False)
     model.add(embedding_layer)
-    model.add(keras.layers.LSTM(256))
-    model.add(keras.layers.Dropout(0.5))
-    model.add(keras.layers.Dense(5, activation='softmax'))
+    model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.LSTM(256, dropout=0.5, recurrent_dropout=0.3))
+    model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.Dense(output_size, activation='softmax'))
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(x=x_train, y=y_train, epochs=200, validation_data=(x_val, y_val), callbacks=callbacks_list, class_weight=class_weights, batch_size=len(x_train))
+    model.fit(x=x_train, y=y_train, epochs=200, validation_data=(x_val, y_val), callbacks=callbacks_list, class_weight=class_weights, batch_size=128)
+    return (model)
+
+def do_lstm_regress(emb_layer, x_train, y_train, x_val, y_val, max_x):
+    class_weights = class_weight.compute_class_weight('balanced',
+                                                 np.unique(y_train),
+                                                 y_train)
+    #checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
+    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=60, mode='min', restore_best_weights=True)
+    callbacks_list = [earlystopping]
+    model = keras.models.Sequential()
+    embedding_layer = keras.layers.Embedding(max_x + 1,
+            emb_layer.shape[1],
+            weights=[emb_layer],
+            input_length=x_train.shape[1],
+            trainable=False)
+    model.add(embedding_layer)
+    model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.LSTM(256, dropout=0.5, recurrent_dropout=0.3))
+    model.add(keras.layers.BatchNormalization())
+    model.add(keras.layers.Dense(1, activation='relu'))
+    model.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
+    model.fit(x=x_train, y=y_train, epochs=200, validation_data=(x_val, y_val), callbacks=callbacks_list, class_weight=class_weights, batch_size=128)
     return (model)
