@@ -66,7 +66,7 @@ def do_lstm(emb_layer, x_train, y_train, x_val, y_val, max_x, output_size):
     y_train = keras.utils.to_categorical(y_train)
     y_val = keras.utils.to_categorical(y_val)
     #checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=60, mode='min', restore_best_weights=True)
+    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, mode='min', restore_best_weights=True)
     callbacks_list = [earlystopping]
     model = keras.models.Sequential()
     embedding_layer = keras.layers.Embedding(max_x + 1,
@@ -88,7 +88,7 @@ def do_lstm_regress(emb_layer, x_train, y_train, x_val, y_val, max_x):
                                                  np.unique(y_train),
                                                  y_train)
     #checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=60, mode='min', restore_best_weights=True)
+    earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, mode='min', restore_best_weights=True)
     callbacks_list = [earlystopping]
     model = keras.models.Sequential()
     embedding_layer = keras.layers.Embedding(max_x + 1,

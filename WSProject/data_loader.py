@@ -34,7 +34,7 @@ def word2index(vocab):
     """
     return {word:i+1 for i, word in enumerate(vocab)}
 
-def get_vecs(docs, dictionairy, length):
+def get_vecs(docs, dictionairy, length, first_or_last_tokens='first'):
     """
     Takes as input documents and\\
     calculates their indexes in\\
@@ -52,6 +52,7 @@ def get_vecs(docs, dictionairy, length):
     docs_idxs = [[] for i in range(len(docs))]
     for i in range(len(docs)):
         j = 0
+        docs[i] = np.flip(docs[i]) if first_or_last_tokens=='last' else docs[i]
         for word in docs[i]:
             if j < system_max:
                 try:
@@ -99,23 +100,14 @@ def get_embedding_matrix(dictionairy, model, vector_dim):
     print('Non null word embeddings: %d' % np.sum(np.sum(embedding_matrix, axis=1) != 0))
     return embedding_matrix
 
-def get_embedding_weights(train_docs, val_docs, test_docs):
+def get_embedding_weights(train_docs, val_docs, test_docs, gensim_model, first_or_last_tokens='first'):
     vocab = get_vocab(train_docs)
     word2index_dict = word2index(vocab)
     length = get_length(train_docs)
-    train_vecs = get_vecs(train_docs, word2index_dict, length)
-    val_vecs = get_vecs(val_docs, word2index_dict, length)
-    test_vecs = get_vecs(test_docs, word2index_dict, length)
+    train_vecs = get_vecs(train_docs, word2index_dict, length, first_or_last_tokens)
+    val_vecs = get_vecs(val_docs, word2index_dict, length, first_or_last_tokens)
+    test_vecs = get_vecs(test_docs, word2index_dict, length, first_or_last_tokens)
     vector_dim = 300
-    print("Loading word embeddings...")
-    filename = 'WS/GoogleNews-vectors-negative300'
-    try:
-        gensim_model = gensim.models.KeyedVectors.load(filename, mmap='r')
-    except:
-        gensim_model = gensim.models.KeyedVectors.load_word2vec_format(filename + '.bin', binary=True)
-        gensim_model.wv.save(filename)
-
-    print("Done loading word embeddings!")
     embedding_matrix = get_embedding_matrix(word2index_dict, gensim_model, vector_dim)
     return (train_vecs, val_vecs, test_vecs, embedding_matrix, word2index_dict, length)
 
