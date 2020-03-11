@@ -154,11 +154,11 @@ if __name__ == '__main__':
     print('Average metrics of 10 best NN models:', np.mean(preds, axis=0))
     print('Std. of metrics of 10 best NN models:', np.std(preds, axis=0))
 
-    #perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
+    perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
     ##############################
     ######## Crowdsourcing #######
     ##############################
-    #clean_crowdsource()
+    clean_crowdsource()
     question_ids, answers, answer_qualities = load_crowdsource()
     perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'first')
     perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'last')
