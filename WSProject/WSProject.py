@@ -96,8 +96,9 @@ def perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, first_o
         print('Done!')
         y_pred = model.predict_classes(x=x_test)
         preds[i] = eval(y_test, y_pred)
-    print('Average metrics of 10 best NN models:', np.mean(preds, axis=1))
-    print('Std. of metrics of 10 best NN models:', np.std(preds, axis=1))
+    print(f'Using {first_or_last_tokens} tokens')
+    print('Average metrics of 10 best NN models:', np.mean(preds, axis=0))
+    print('Std. of metrics of 10 best NN models:', np.std(preds, axis=0))
 
     reg_mses = np.empty((10))
     for j in range(10):
@@ -109,6 +110,7 @@ def perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, first_o
         print('Done!')
         reg_y_pred = reg_model.predict(x=x_test)
         reg_mses[j] = mean_squared_error(reg_y_pred, y_test)
+    print(f'Using {first_or_last_tokens} tokens')
     print('Average mean squared error of 10 best NN regressors:', np.mean(reg_mses))
     print('Std. of metrics of 10 best NN regressors:', np.std(reg_mses))
     return
@@ -149,14 +151,14 @@ if __name__ == '__main__':
     for i in range(nn_experiments):
         x_train, y_train, x_val, y_val, x_test, y_test = split_dataset(tokens, category_ids, test_and_val_size)
         preds[i] = perform_nn(x_train, y_train, x_val, y_val, x_test, y_test, gensim_model)
-    print('Average metrics of 10 best NN models:', np.mean(preds, axis=1))
-    print('Std. of metrics of 10 best NN models:', np.std(preds, axis=1))
+    print('Average metrics of 10 best NN models:', np.mean(preds, axis=0))
+    print('Std. of metrics of 10 best NN models:', np.std(preds, axis=0))
 
-    perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
+    #perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
     ##############################
     ######## Crowdsourcing #######
     ##############################
-    clean_crowdsource()
+    #clean_crowdsource()
     question_ids, answers, answer_qualities = load_crowdsource()
     perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'first')
     perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'last')
