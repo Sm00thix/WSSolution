@@ -43,7 +43,7 @@ def do_random_forest(x_train, y_train, x_val, y_val, x_test, y_test):
     no_features = x_train.shape[1]
     param_grid = {
             'n_estimators': [50 * i for i in range(1,11)],
-            'max_features': [int(round(i * no_features / 5)) for i in range (1,6)],
+            'max_features': [int(round(i * no_features / 5)) for i in range(1,6)],
             'oob_score': [True],
             'class_weight': ['balanced', None]
         }
@@ -65,7 +65,6 @@ def do_lstm(emb_layer, x_train, y_train, x_val, y_val, max_x, output_size):
                                                  y_train)
     y_train = keras.utils.to_categorical(y_train)
     y_val = keras.utils.to_categorical(y_val)
-    #checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
     earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, mode='min', restore_best_weights=True)
     callbacks_list = [earlystopping]
     model = keras.models.Sequential()
@@ -87,7 +86,6 @@ def do_lstm_regress(emb_layer, x_train, y_train, x_val, y_val, max_x):
     class_weights = class_weight.compute_class_weight('balanced',
                                                  np.unique(y_train),
                                                  y_train)
-    #checkpoint = keras.callbacks.ModelCheckpoint('model.hdf5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
     earlystopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, mode='min', restore_best_weights=True)
     callbacks_list = [earlystopping]
     model = keras.models.Sequential()

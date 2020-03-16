@@ -43,16 +43,6 @@ def perform_nn(x_train, y_train, x_val, y_val, x_test, y_test, gensim_model):
     max_x = np.amax(x_train)
     print('Done!')
 
-    #preds = np.empty((10,7))
-    #for i in range(10):
-    #    print('Training a neural classifier...')
-    #    model = do_lstm(emb_layer, x_train, y_train, x_val, y_val, max_x, 5)
-    #    print('Done!')
-    #    y_pred = model.predict_classes(x=x_test)
-    #    preds[i] = eval(y_test, y_pred)
-    #print('Average metrics of 10 best NN models:', np.mean(preds, axis=1))
-    #return
-
     print('Training a neural classifier...')
     model = do_lstm(emb_layer, x_train, y_train, x_val, y_val, max_x, 5)
     print('Done!')
@@ -142,7 +132,7 @@ if __name__ == '__main__':
     ###############################
     nn_experiments = 10
     nn_metrics = 7
-    test_and_val_size=0.1
+    test_and_val_size = 0.1
 
     print('Performing general preprocessing...')
     tokens = sanitize(questions)

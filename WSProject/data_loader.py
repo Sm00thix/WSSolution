@@ -32,7 +32,7 @@ def word2index(vocab):
     Returns:\\
     A dictionairy of word:index
     """
-    return {word:i+1 for i, word in enumerate(vocab)}
+    return {word:i + 1 for i, word in enumerate(vocab)}
 
 def get_vecs(docs, dictionairy, length, first_or_last_tokens='first'):
     """
@@ -52,7 +52,7 @@ def get_vecs(docs, dictionairy, length, first_or_last_tokens='first'):
     docs_idxs = [[] for i in range(len(docs))]
     for i in range(len(docs)):
         j = 0
-        docs[i] = np.flip(docs[i]) if first_or_last_tokens=='last' else docs[i]
+        docs[i] = np.flip(docs[i]) if first_or_last_tokens == 'last' else docs[i]
         for word in docs[i]:
             if j < system_max:
                 try:
@@ -80,7 +80,7 @@ def get_embedding_matrix(dictionairy, model, vector_dim):
     """
     Given a dictionairy and a gensim\\
     model, calculate an embedding matrix\\
-    based on the words and ther indices\\
+    based on the words and their indices\\
     in the dictionairy as well as the\\
     gensim word embedding of the words
     Parameters:\\
@@ -158,11 +158,11 @@ def stats(questions, answers, cats, ids):
     a_len = v_len(answers)
     uniq_cats = pd.unique(cats)
     uniq_ids = pd.unique(ids)
-    uniq_counts = [np.sum(ids==id) for id in uniq_ids]
-    mean_q_lens = [np.mean(t_q_len) for t_q_len in [q_len[ids==topic] for topic in uniq_ids]]
-    mean_a_lens = [np.mean(t_a_len) for t_a_len in [a_len[ids==topic] for topic in uniq_ids]]
-    std_q_lens = [np.std(t_q_len) for t_q_len in [q_len[ids==topic] for topic in uniq_ids]]
-    std_a_lens = [np.std(t_a_len) for t_a_len in [a_len[ids==topic] for topic in uniq_ids]]
+    uniq_counts = [np.sum(ids == id) for id in uniq_ids]
+    mean_q_lens = [np.mean(t_q_len) for t_q_len in [q_len[ids == topic] for topic in uniq_ids]]
+    mean_a_lens = [np.mean(t_a_len) for t_a_len in [a_len[ids == topic] for topic in uniq_ids]]
+    std_q_lens = [np.std(t_q_len) for t_q_len in [q_len[ids == topic] for topic in uniq_ids]]
+    std_a_lens = [np.std(t_a_len) for t_a_len in [a_len[ids == topic] for topic in uniq_ids]]
     return (uniq_cats, uniq_ids, uniq_counts, mean_q_lens, mean_a_lens, std_q_lens, std_a_lens)
 
 
@@ -199,7 +199,7 @@ def load_cs_csvs(path):
     returns: a single pandas dataframe resulting from concatenating the loaded csv files\n
     """
     csv_files = [file for file in os.listdir(path) if file.endswith('.csv')]
-    return pd.concat([pd.read_csv(path+'/'+file, error_bad_lines=False, warn_bad_lines=True) for file in csv_files], ignore_index=True)
+    return pd.concat([pd.read_csv(path + '/' + file, error_bad_lines=False, warn_bad_lines=True) for file in csv_files], ignore_index=True)
 
 def mv_tiebreaker(ans):
     """
@@ -222,8 +222,6 @@ def mv_average(ans):
 def clean_and_stats_dataframe(df):
     rgx = r'[^\n]*\n.'
     df['Question'].replace(to_replace=rgx, value='', inplace=True, regex=True) # Remove the broken values from WS1002.csv
-    #v_strip = np.vectorize(str.strip)
-    #v_lower = np.vectorize(str.lower)
     df['Answer Label'] = df['Answer Label'].astype(str).apply(str.strip).apply(str.lower)
     df['Answer Label'].replace(to_replace='nan', value='na', inplace=True)
     new_df = pd.DataFrame(columns=df.columns)
@@ -246,7 +244,6 @@ def clean_and_stats_dataframe(df):
 
         question, a_url = sub_df.iloc[0,:-5]
 
-        #a_labels = v_strip(v_lower(sub_df['Answer Label'].to_numpy(dtype=str)))
         a_labels = sub_df['Answer Label'].to_numpy(dtype=str)
         q_ratings = sub_df['Question Rating'].to_numpy(dtype=float)
         a_quals = sub_df['Answer Quality'].to_numpy(dtype=float)
@@ -373,35 +370,6 @@ def clean_and_stats_dataframe(df):
     print('Number yes-labels given', cleaned_al_yes)
     print('Number of no-labels given', cleaned_al_no)
     print('Number of na-labels given', cleaned_al_na)
-    
-    # TODO:
-    # perform some stats - use the lists as before-mv and use new_df as after-mv
-
-    #wiki_arr = np.array([
-    #    [np.nan, np.nan, np.nan, np.nan, np.nan, 3, 4, 1, 2, 1, 1, 3, 3, np.nan, 3],
-    #    [1, np.nan, 2, 1, 3, 3, 4, 3, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-    #    [np.nan, np.nan, 2, 1, 3, 4, 4, np.nan, 2, 1, 1, 3, 3, np.nan, 4]
-    #    ])
-    #wiki_arr_2 = np.zeros((15, 4))
-    #wiki_arr_2[0] = [1, 0, 0, 0]
-    #wiki_arr_2[2] = [0, 2, 0, 0]
-    #wiki_arr_2[3] = [2, 0, 0, 0]
-    #wiki_arr_2[4] = [0, 0, 2, 0]
-    #wiki_arr_2[5] = [0, 0, 2, 1]
-    #wiki_arr_2[6] = [0, 0, 0, 3]
-    #wiki_arr_2[7] = [1, 0, 1, 0]
-    #wiki_arr_2[8] = [0, 2, 0, 0]
-    #wiki_arr_2[9] = [2, 0, 0, 0]
-    #wiki_arr_2[10] = [2, 0, 0, 0]
-    #wiki_arr_2[11] = [0, 0, 2, 0]
-    #wiki_arr_2[12] = [0, 0, 2, 0]
-    #wiki_arr_2[14] = [0, 0, 1, 1]
-
-    #print(krippendorff.alpha(reliability_data=wiki_arr, level_of_measurement='interval'))
-    #print(krippendorff.alpha(reliability_data=wiki_arr, level_of_measurement='nominal'))
-
-    #print(krippendorff.alpha(value_counts=wiki_arr_2, level_of_measurement='interval'))
-    #print(krippendorff.alpha(value_counts=wiki_arr_2, level_of_measurement='nominal'))
     return
 
 def krippen_alpha(df, metric, lom):
@@ -411,7 +379,7 @@ def krippen_alpha(df, metric, lom):
     metric_vals = np.unique(df[metric])
 
     def metric_vals_to_indices(vals, mvals):
-        indices = [np.nonzero(mvals==val)[0][0] for val in vals]
+        indices = [np.nonzero(mvals == val)[0][0] for val in vals]
         return np.array(indices)
 
     uniq_ids = np.unique(df['questionId'])
