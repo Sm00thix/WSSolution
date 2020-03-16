@@ -106,13 +106,6 @@ def perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, first_o
     return
 
 if __name__ == '__main__':
-    #np.random.seed(27)
-    #rn.seed(42)
-    #tf.random.set_seed(69)
-    #np.random.seed(221347)
-    #rn.seed(421342)
-    #tf.random.set_seed(691234)
-
     ################################
     #### Load & preprocess data ####
     ################################
