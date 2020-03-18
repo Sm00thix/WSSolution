@@ -1,7 +1,9 @@
 from data_loader import *
 from classifiers import *
 from sklearn.metrics import mean_squared_error
+from sklearn.metrics.pairwise import cosine_similarity
 import gensim
+import pandas as pd
 import numpy as np
 import random as rn
 import tensorflow as tf
@@ -53,7 +55,7 @@ def load_crowdsource():
     print('Loading data from dataset provided by TAs...')
     questions, answers, category_ids, categories, question_ids, answer_labels, answer_qualities = load_data('WS/web_science_dataset_with_labels.jsonl', True)
     print('Done!')
-    return(question_ids, answers, answer_qualities)
+    return(questions, question_ids, categories, answers, answer_qualities)
 
 def clean_crowdsource():
     print('Loading crowdsourced dataset')
@@ -105,43 +107,97 @@ def perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, first_o
     print('Std. of metrics of 10 best NN regressors:', np.std(reg_mses))
     return
 
+def perform_recommend(questions, question_ids, categories, train_df, test_df):
+    # split questions into categories
+    q_nutrition = questions[categories == 'nutrition']
+    q_climate_change = questions[categories == 'climate-change']
+    q_medical_science = questions[categories == 'medical-science']
+    q_physics = questions[categories == 'physics']
+    q_psychology = questions[categories == 'psychology']
+
+    # keep track of question ids in the categorical splits
+    #id_nutrition = question_ids[categories == 'nutrition']
+    #id_climate_change = question_ids[categories == 'climate-change']
+    #id_medical_science = question_ids[categories == 'medical-science']
+    #id_physics = question_ids[categories == 'physics']
+    #id_psychology = question_ids[categories == 'psychology']
+
+    # compute tfidf
+    tokens = sanitize(questions)
+    tfidf = get_tf_idf(tokens)
+    tfidf_nutrition = tfidf[categories == 'nutrition']
+    tfidf_climate_change = tfidf[categories == 'climate-change']
+    tfidf_medical_science = tfidf[categories == 'medical-science']
+    tfidf_physics = tfidf[categories == 'physics']
+    tfidf_psychology = tfidf[categories == 'psychology']
+
+    users = pd.unique(train_df['userID'])
+
+    def compute_scores(train_category, test_category):
+        train_question_ids = question_ids[categories == train_category]
+        # must split query in two to avoid scoping issues
+        sub_df = train_df.query('questionID in @train_question_ids')
+        users_likes = [sub_df.query('userID == @user and rating == 3')['questionID'] for user in users]
+
+        vector_len = tfidf.shape[1]
+        users_vectors = []
+        for i in range(len(users)):
+            doc_reps = [tfidf[np.where(question_ids==id)[0][0]] for id in users_likes[i]]
+            if len(doc_reps) == 0:
+                users_vectors.append(np.zeros(vector_len))
+            else:
+                users_vectors.append(np.average(doc_reps, axis=0))
+        cos_sims = cosine_similarity(np.array(users_vectors))
+        # nået til næstsidste punkt
+        pass
+    compute_scores('nutrition', 'nutrition')
+    pass
+
 if __name__ == '__main__':
     ################################
     #### Load & preprocess data ####
     ################################
-    print("Loading word embeddings...")
-    filename = 'WS/GoogleNews-vectors-negative300'
-    try:
-        gensim_model = gensim.models.KeyedVectors.load(filename, mmap='r')
-    except:
-        gensim_model = gensim.models.KeyedVectors.load_word2vec_format(filename + '.bin', binary=True)
-        gensim_model.wv.save(filename)
+    #print("Loading word embeddings...")
+    #filename = 'WS/GoogleNews-vectors-negative300'
+    #try:
+    #    gensim_model = gensim.models.KeyedVectors.load(filename, mmap='r')
+    #except:
+    #    gensim_model = gensim.models.KeyedVectors.load_word2vec_format(filename + '.bin', binary=True)
+    #    gensim_model.wv.save(filename)
 
-    print("Done loading word embeddings!")
-    questions, category_ids = perform_loading()
+    #print("Done loading word embeddings!")
+    #questions, category_ids = perform_loading()
 
     ###############################
     #### Perform classification ###
     ###############################
-    nn_experiments = 10
-    nn_metrics = 7
-    test_and_val_size = 0.1
+    #nn_experiments = 10
+    #nn_metrics = 7
+    #test_and_val_size = 0.1
 
-    print('Performing general preprocessing...')
-    tokens = sanitize(questions)
-    print('Done!')
-    preds = np.empty((nn_experiments,nn_metrics))
-    for i in range(nn_experiments):
-        x_train, y_train, x_val, y_val, x_test, y_test = split_dataset(tokens, category_ids, test_and_val_size)
-        preds[i] = perform_nn(x_train, y_train, x_val, y_val, x_test, y_test, gensim_model)
-    print('Average metrics of 10 best NN models:', np.mean(preds, axis=0))
-    print('Std. of metrics of 10 best NN models:', np.std(preds, axis=0))
+    #print('Performing general preprocessing...')
+    #tokens = sanitize(questions)
+    #print('Done!')
+    #preds = np.empty((nn_experiments,nn_metrics))
+    #for i in range(nn_experiments):
+    #    x_train, y_train, x_val, y_val, x_test, y_test = split_dataset(tokens, category_ids, test_and_val_size)
+    #    preds[i] = perform_nn(x_train, y_train, x_val, y_val, x_test, y_test, gensim_model)
+    #print('Average metrics of 10 best NN models:', np.mean(preds, axis=0))
+    #print('Std. of metrics of 10 best NN models:', np.std(preds, axis=0))
 
-    perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
+    #perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
+
     ##############################
     ######## Crowdsourcing #######
     ##############################
-    clean_crowdsource()
-    question_ids, answers, answer_qualities = load_crowdsource()
-    perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'first')
-    perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'last')
+    #clean_crowdsource()
+    questions, question_ids, categories, answers, answer_qualities = load_crowdsource()
+    #perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'first')
+    #perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'last')
+
+    ##############################
+    ######## Recommender #########
+    ##############################
+
+    train_df, test_df = load_tsvs('WS/')
+    perform_recommend(questions, question_ids, categories, train_df, test_df)

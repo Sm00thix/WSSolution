@@ -124,7 +124,11 @@ def sanitize(documents):
     tokens = np.array([[token for token in lst if token not in stop_words] for lst in tokens])
     return (tokens)
 
-
+def get_tf_idf(tokens):
+    t = Tokenizer()
+    t.fit_on_texts(tokens)
+    tfidf = t.texts_to_matrix(tokens, 'tfidf')
+    return tfidf
 
 def fit_tokenizer(tokens):
     """
@@ -190,9 +194,6 @@ def load_data(path, labels=False):
        else:
            return (questions, answers, category_ids, categories)
 
-
-
-
 def load_cs_csvs(path):
     """
     path: path to the directory containing the csv files\n
@@ -200,6 +201,13 @@ def load_cs_csvs(path):
     """
     csv_files = [file for file in os.listdir(path) if file.endswith('.csv')]
     return pd.concat([pd.read_csv(path + '/' + file, error_bad_lines=False, warn_bad_lines=True) for file in csv_files], ignore_index=True)
+
+def load_tsvs(path):
+    train_file = path + 'recommender_train.tsv'
+    test_file = path + 'recommender_test.tsv'
+    train_df = pd.read_csv(train_file, sep='\t', warn_bad_lines=True)
+    test_df = pd.read_csv(test_file, sep='\t', warn_bad_lines=True)
+    return (train_df, test_df)
 
 def mv_tiebreaker(ans):
     """
