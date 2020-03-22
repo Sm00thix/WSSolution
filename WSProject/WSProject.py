@@ -107,13 +107,29 @@ def perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, first_o
     print('Std. of metrics of 10 best NN regressors:', np.std(reg_mses))
     return
 
-def perform_recommend(questions, question_ids, categories, train_df, test_df):
+def perform_recommend(questions, question_ids, categories, train_df, test_df, k):
+
+    def aggregate_recommends(recommends, not_recommends):
+        # Compute the set of questions to recommend. This is all questions that have been recommended more than they have been not_recommended
+        f_rec, rec_counts = np.unique(np.concatenate(recommends), return_counts=True)
+        f_not_rec, not_rec_counts = np.unique(np.concatenate(not_recommends), return_counts=True)
+        f_not_rec = f_not_rec.tolist()
+        n_recs = []
+        for item in f_rec:
+            try:
+                val = not_rec_counts[f_not_rec.index(item)]
+                n_recs.append(val)
+            except:
+                n_recs.append(0)
+        final = [f_rec[i] for i in range(f_rec.shape[0]) if rec_counts[i] > n_recs[i]]
+        return final
+
     # split questions into categories
-    q_nutrition = questions[categories == 'nutrition']
-    q_climate_change = questions[categories == 'climate-change']
-    q_medical_science = questions[categories == 'medical-science']
-    q_physics = questions[categories == 'physics']
-    q_psychology = questions[categories == 'psychology']
+    #q_nutrition = questions[categories == 'nutrition']
+    #q_climate_change = questions[categories == 'climate-change']
+    #q_medical_science = questions[categories == 'medical-science']
+    #q_physics = questions[categories == 'physics']
+    #q_psychology = questions[categories == 'psychology']
 
     # keep track of question ids in the categorical splits
     #id_nutrition = question_ids[categories == 'nutrition']
@@ -125,21 +141,25 @@ def perform_recommend(questions, question_ids, categories, train_df, test_df):
     # compute tfidf
     tokens = sanitize(questions)
     tfidf = get_tf_idf(tokens)
-    tfidf_nutrition = tfidf[categories == 'nutrition']
-    tfidf_climate_change = tfidf[categories == 'climate-change']
-    tfidf_medical_science = tfidf[categories == 'medical-science']
-    tfidf_physics = tfidf[categories == 'physics']
-    tfidf_psychology = tfidf[categories == 'psychology']
+    #tfidf_nutrition = tfidf[categories == 'nutrition']
+    #tfidf_climate_change = tfidf[categories == 'climate-change']
+    #tfidf_medical_science = tfidf[categories == 'medical-science']
+    #tfidf_physics = tfidf[categories == 'physics']
+    #tfidf_psychology = tfidf[categories == 'psychology']
 
     users = pd.unique(train_df['userID'])
+    vector_len = tfidf.shape[1]
 
-    def compute_scores(train_category, test_category):
+    def compute_scores(train_category, test_category, k):
         train_question_ids = question_ids[categories == train_category]
+        test_question_ids = question_ids[categories == test_category]
         # must split query in two to avoid scoping issues
-        sub_df = train_df.query('questionID in @train_question_ids')
-        users_likes = [sub_df.query('userID == @user and rating == 3')['questionID'] for user in users]
-
-        vector_len = tfidf.shape[1]
+        sub_train_df = train_df.query('questionID in @train_question_ids')
+        users_likes = [sub_train_df.query('userID == @user and rating == 3')['questionID'] for user in users]
+        sub_recommend_df = train_df.query('questionID in @test_question_ids')
+        users_recommends = np.array([sub_recommend_df.query('userID == @user and rating == 3')['questionID'].to_numpy() for user in users])
+        users_not_recommends = np.array([sub_recommend_df.query('userID == @user and rating == 1')['questionID'].to_numpy() for user in users])
+        #sub_test_df = test_df.query('questionID in @test_category_ids')
         users_vectors = []
         for i in range(len(users)):
             doc_reps = [tfidf[np.where(question_ids==id)[0][0]] for id in users_likes[i]]
@@ -147,10 +167,27 @@ def perform_recommend(questions, question_ids, categories, train_df, test_df):
                 users_vectors.append(np.zeros(vector_len))
             else:
                 users_vectors.append(np.average(doc_reps, axis=0))
+
         cos_sims = cosine_similarity(np.array(users_vectors))
-        # nået til næstsidste punkt
+        top_k_friends = np.empty((len(users), k)) # assumption: 0 < k < len(users)
+        recommendations = [[] for _ in range(len(users))]
+        for i in range(len(users)):
+            friends = users[np.argsort(cos_sims[i])[::-1][1:k+1]]
+            top_k_friends[i] = friends
+            friends_idxs = [np.where(users==friend)[0][0] for friend in friends]
+            friends_recommends = users_recommends[friends_idxs]
+            friends_not_recommends = users_not_recommends[friends_idxs]
+            recommendations[i].append(aggregate_recommends(friends_recommends, friends_not_recommends))
+        # recommendations have now been computed.
+        # compute the accuracy between recommendations and actual recommended items (TP + TN) / (TP + TN + FP + FN), TN is any "no" in the test set that was not recommended.
+        # Save result in the result matrix
         pass
-    compute_scores('nutrition', 'nutrition')
+    uniq_cats = np.unique(categories)
+    accuracy_matrix = np.empty((len(uniq_cats), len(uniq_cats)))
+    for i in range(len(uniq_cats)):
+        for j in range(len(uniq_cats)):
+            accuracy_matrix[i] = compute_scores(uniq_cats[i], uniq_cats[j], k)
+            print('Done for train: ', uniq_cats[i], ' and test: ', uniq_cats[j])
     pass
 
 if __name__ == '__main__':
@@ -198,6 +235,6 @@ if __name__ == '__main__':
     ##############################
     ######## Recommender #########
     ##############################
-
+    k_friends = 5
     train_df, test_df = load_tsvs('WS/')
-    perform_recommend(questions, question_ids, categories, train_df, test_df)
+    perform_recommend(questions, question_ids, categories, train_df, test_df, k_friends)
