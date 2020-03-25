@@ -124,11 +124,13 @@ def sanitize(documents):
     tokens = np.array([[token for token in lst if token not in stop_words] for lst in tokens])
     return (tokens)
 
-def get_tf_idf(tokens):
+def get_tfidf_vocab(tokens, top_n_words):
     t = Tokenizer()
     t.fit_on_texts(tokens)
+    t.num_words=top_n_words+1
     tfidf = t.texts_to_matrix(tokens, 'tfidf')
-    return tfidf
+    vocab = t.word_index
+    return tfidf, vocab
 
 def fit_tokenizer(tokens):
     """

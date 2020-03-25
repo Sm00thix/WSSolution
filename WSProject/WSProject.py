@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 import random as rn
 import tensorflow as tf
+import multiprocessing as mp
+import itertools
 
 def perform_loading():
     print('Loading data...')
@@ -107,7 +109,7 @@ def perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, first_o
     print('Std. of metrics of 10 best NN regressors:', np.std(reg_mses))
     return
 
-def perform_recommend(questions, question_ids, categories, train_df, test_df, k):
+def perform_recommend(questions, question_ids, categories, train_df, test_df, k, top_n_words):
 
     def aggregate_recommends(recommends, not_recommends):
         # Compute the set of questions to recommend. This is all questions that have been recommended more than they have been not_recommended
@@ -124,42 +126,76 @@ def perform_recommend(questions, question_ids, categories, train_df, test_df, k)
         final = [f_rec[i] for i in range(f_rec.shape[0]) if rec_counts[i] > n_recs[i]]
         return final
 
-    # split questions into categories
-    #q_nutrition = questions[categories == 'nutrition']
-    #q_climate_change = questions[categories == 'climate-change']
-    #q_medical_science = questions[categories == 'medical-science']
-    #q_physics = questions[categories == 'physics']
-    #q_psychology = questions[categories == 'psychology']
+    def compute_accuracy(recommendations, test_recommends, test_not_recommends):
+        TP = 0
+        FP = 0
+        TN = 0
+        FN = 0
+        for i in range(len(recommendations)):
+            cur_tp = TP # True positives up until this user
+            cur_fp = FP # False positives up until this user
+            for rec in recommendations[i]:
+                if rec in test_recommends[i]:
+                    TP += 1
+                elif rec in test_not_recommends[i]:
+                    FP += 1
+            FN += len(test_recommends[i]) - TP + cur_tp # Update false negatives with false negatives for current user
+            TN += len(test_not_recommends[i]) - FP + cur_fp # Update true negatives with false negatives for current user
+        acc = (TP + TN) / (TP + TN + FP + FN)
+        return acc
 
-    # keep track of question ids in the categorical splits
-    #id_nutrition = question_ids[categories == 'nutrition']
-    #id_climate_change = question_ids[categories == 'climate-change']
-    #id_medical_science = question_ids[categories == 'medical-science']
-    #id_physics = question_ids[categories == 'physics']
-    #id_psychology = question_ids[categories == 'psychology']
-
-    # compute tfidf
+    # compute tfidf and document vectors
     tokens = sanitize(questions)
-    tfidf = get_tf_idf(tokens)
-    #tfidf_nutrition = tfidf[categories == 'nutrition']
-    #tfidf_climate_change = tfidf[categories == 'climate-change']
-    #tfidf_medical_science = tfidf[categories == 'medical-science']
-    #tfidf_physics = tfidf[categories == 'physics']
-    #tfidf_psychology = tfidf[categories == 'psychology']
-
-    users = pd.unique(train_df['userID'])
+    tfidf, vocab = get_tfidf_vocab(tokens, top_n_words)
+    
+    #top_n_tfidf_idxs = np.take(np.flip(np.argsort(tfidf, axis=1), axis=1), range(top_n_words), axis=1)
+    #keys = list(vocab.keys())
+    #values = list(vocab.values())
+    #reverse_dict = dict(zip(values, keys))
     vector_len = tfidf.shape[1]
 
-    def compute_scores(train_category, test_category, k):
+    #top_n_vectors = np.empty((top_n_tfidf_idxs.shape[0], top_n_tfidf_idxs.shape[1], vector_len))
+    #broken_words_idxs = []
+    #for i in range(top_n_tfidf_idxs.shape[0]):
+    #    for j in range(top_n_tfidf_idxs.shape[1]):
+    #        idx = top_n_tfidf_idxs[i,j]
+    #        word = reverse_dict[idx]
+    #        try:
+    #            top_n_vectors[i,j] = gensim_model.word_vec(word)
+    #        except:
+    #            broken_words_idxs.append((i,j))
+    #average_vectors = np.zeros((top_n_tfidf_idxs.shape[0], vector_len))
+    #for i in range(top_n_tfidf_idxs.shape[0]):
+    #    no_actual_vectors = 0
+    #    for j in range(top_n_tfidf_idxs.shape[1]):
+    #        if (i,j) not in broken_words_idxs and j < len(tokens[i]):
+    #            average_vectors[i] += top_n_vectors[i,j]
+    #            no_actual_vectors += 1
+    #        else:
+    #            continue
+    #    average_vectors[i] /= no_actual_vectors
+                
+
+    #compute average word embedding for each user based on top_n_tfidf_idxs
+    #only consider word embedding for min(top_n_words, len(tokens[i]) for each document - otherwise we introduce noise
+    # use average vectors instead of tfidf
+    users = pd.unique(train_df['userID'])
+
+    def compute_scores(train_category, test_category, k, top_n_words):
         train_question_ids = question_ids[categories == train_category]
         test_question_ids = question_ids[categories == test_category]
         # must split query in two to avoid scoping issues
         sub_train_df = train_df.query('questionID in @train_question_ids')
         users_likes = [sub_train_df.query('userID == @user and rating == 3')['questionID'] for user in users]
+
         sub_recommend_df = train_df.query('questionID in @test_question_ids')
         users_recommends = np.array([sub_recommend_df.query('userID == @user and rating == 3')['questionID'].to_numpy() for user in users])
         users_not_recommends = np.array([sub_recommend_df.query('userID == @user and rating == 1')['questionID'].to_numpy() for user in users])
-        #sub_test_df = test_df.query('questionID in @test_category_ids')
+
+        sub_test_df = test_df.query('questionID in @test_question_ids')
+        sub_test_recommend_df = [sub_test_df.query('userID == @user and recommend == "Yes"')['questionID'].to_numpy() for user in users]
+        sub_test_not_recommend_df = [sub_test_df.query('userID == @user and recommend == "No"')['questionID'].to_numpy() for user in users]
+
         users_vectors = []
         for i in range(len(users)):
             doc_reps = [tfidf[np.where(question_ids==id)[0][0]] for id in users_likes[i]]
@@ -172,23 +208,81 @@ def perform_recommend(questions, question_ids, categories, train_df, test_df, k)
         top_k_friends = np.empty((len(users), k)) # assumption: 0 < k < len(users)
         recommendations = [[] for _ in range(len(users))]
         for i in range(len(users)):
+            #if len(users_likes[i]) == 0:
+            #    # If the user does not like anything within the current training topic, we do not recommend anything because we can not compute nearest friends correctly.
+            #    recommendations[i].extend([])
+            #else:
             friends = users[np.argsort(cos_sims[i])[::-1][1:k+1]]
             top_k_friends[i] = friends
             friends_idxs = [np.where(users==friend)[0][0] for friend in friends]
             friends_recommends = users_recommends[friends_idxs]
             friends_not_recommends = users_not_recommends[friends_idxs]
-            recommendations[i].append(aggregate_recommends(friends_recommends, friends_not_recommends))
+            recommendations[i].extend(aggregate_recommends(friends_recommends, friends_not_recommends))
         # recommendations have now been computed.
         # compute the accuracy between recommendations and actual recommended items (TP + TN) / (TP + TN + FP + FN), TN is any "no" in the test set that was not recommended.
         # Save result in the result matrix
-        pass
+        acc = compute_accuracy(recommendations, sub_test_recommend_df, sub_test_not_recommend_df)
+        return acc
     uniq_cats = np.unique(categories)
     accuracy_matrix = np.empty((len(uniq_cats), len(uniq_cats)))
     for i in range(len(uniq_cats)):
         for j in range(len(uniq_cats)):
-            accuracy_matrix[i] = compute_scores(uniq_cats[i], uniq_cats[j], k)
-            print('Done for train: ', uniq_cats[i], ' and test: ', uniq_cats[j])
-    pass
+            accuracy_matrix[i][j] = compute_scores(uniq_cats[i], uniq_cats[j], k, top_n_words)
+            #print('Done for train: ', uniq_cats[i], ' and test: ', uniq_cats[j], ' result = ', accuracy_matrix[i][j])
+    return accuracy_matrix
+
+def caller(params):
+    questions, question_ids, categories, train_df, test_df, k_friends, top_n_words = params
+    print('Computing with k: ', k_friends, ' and n: ', top_n_words)
+    acc_matrix = perform_recommend(questions, question_ids, categories, train_df, test_df, k_friends, top_n_words)
+    avg = np.average(acc_matrix)
+    return (avg, k_friends, top_n_words)
+
+def perform_recommend_search(questions, question_ids, categories):
+    k_friends = range(1, 29)
+    top_n_words = range(100, 3200, 50)
+    avg_acc_matrix = np.empty((len(k_friends), len(top_n_words)))
+    p = mp.Pool(12)
+    train_df, test_df = load_tsvs('WS/')
+    params = list(itertools.product(k_friends, top_n_words))
+    params = [(questions, question_ids, categories, train_df, test_df, k_friends, top_n_words) for (k_friends, top_n_words) in params]
+    result = p.map(caller, params)
+    p.close()
+    p.join()
+    best_acc = 0
+    best_k = 0
+    best_n = 0
+    for vals in result:
+        avg, k_friends, top_n_words = vals
+        if avg > best_acc:
+            best_acc = avg
+            best_k = k_friends
+            best_n = top_n_words
+    print('Final best parameters:')
+    print('Best k = ', best_k)
+    print('Best n = ', best_n)
+    print('Best average accuracy: ', best_acc)
+    print('Train by test categories are: ', np.unique(categories))
+    best_acc_matrix = perform_recommend(questions, question_ids, categories, train_df, test_df, best_k, best_n)
+    print('Best accuracy matrix: ', best_acc_matrix)
+
+    #best_acc = 0
+    #best_k = 0
+    #best_n = 0
+    #        acc_matrix = perform_recommend(questions, question_ids, categories, train_df, test_df, k_friends, top_n_words)
+    #        avg = np.average(acc_matrix)
+    #        if avg > best_acc:
+    #            best_acc_matrix = acc_matrix
+    #            best_acc = avg
+    #            best_k = k_friends
+    #            best_n = top_n_words
+    #            print('Found best_k: ', k_friends, ' and top_n_words: ', top_n_words, ' with acc: ', avg)
+    #print('Final best parameters:')
+    #print('Best k = ', best_k)
+    #print('Best n = ', best_n)
+    #print('Best average accuracy: ', best_acc)
+    #print('Train by test categories are: ', np.unique(categories))
+    #print('Best accuracy matrix: ', best_acc_matrix)
 
 if __name__ == '__main__':
     ################################
@@ -235,6 +329,5 @@ if __name__ == '__main__':
     ##############################
     ######## Recommender #########
     ##############################
-    k_friends = 5
-    train_df, test_df = load_tsvs('WS/')
-    perform_recommend(questions, question_ids, categories, train_df, test_df, k_friends)
+
+    perform_recommend_search(questions, question_ids, categories)
