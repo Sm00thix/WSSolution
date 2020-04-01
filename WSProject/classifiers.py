@@ -29,7 +29,7 @@ def split_dataset(x_set, y_set, test_and_val_size):
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, stratify=y_train, test_size=(len(x_test) / len(x_train)))
     return (x_train, y_train, x_val, y_val, x_test, y_test)
 
-def do_random_forest(x_train, y_train, x_val, y_val, x_test, y_test):
+def do_random_forest(x_train, y_train, x_val, y_val):
     """
     Performs validation with a grid search of 100 different parameters, resulting in 100 different models.\n
     x_train: the training data samples\n

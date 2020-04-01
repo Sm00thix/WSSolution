@@ -124,13 +124,54 @@ def sanitize(documents):
     tokens = np.array([[token for token in lst if token not in stop_words] for lst in tokens])
     return (tokens)
 
-def get_tfidf_vocab(tokens, top_n_words):
+def get_tfidf(tokens, top_n_words):
     t = Tokenizer()
     t.fit_on_texts(tokens)
     t.num_words=top_n_words+1
     tfidf = t.texts_to_matrix(tokens, 'tfidf')
-    vocab = t.word_index
-    return tfidf, vocab
+    return tfidf
+
+def get_top_tokens(x_train, x_val, x_test, top_tokens):
+
+    def scorer(words_row, tfidf_row):
+        scores = np.zeros(len(words_row))
+        for word in words_row:
+            try:
+                idx = t.word_index[word]
+                scores.append(tfidf_row[idx])
+            except:
+                continue
+        word_rankings = np.argsort(scores)[::-1][:top_tokens]
+        return word_rankings
+
+    def helper(tokens, tfidf):
+        final = [[] for _ in range(len(tokens))]
+        for i, doc in enumerate(tokens):
+            if len(doc) <= top_tokens:
+                final[i].extend(doc)
+                continue
+            else:
+                doc_rankings = scorer(doc, tfidf[i])
+                for token in doc:
+                    try:
+                        if t.word_index[token] in doc_rankings: #top_words_idxs[i]:
+                            final[i].extend(token)
+                    except:
+                        continue
+        return final
+    t = Tokenizer()
+    t.fit_on_texts(x_train)
+    train_tfidf = t.texts_to_matrix(x_train, 'tfidf')
+    val_tfidf = t.texts_to_matrix(x_val, 'tfidf')
+    test_tfidf = t.texts_to_matrix(x_test, 'tfidf')
+    train_top_words_idxs = np.take(np.flip(np.argsort(train_tfidf, axis=1), axis=1), range(top_tokens), axis=1)
+    val_top_words_idxs = np.take(np.flip(np.argsort(val_tfidf, axis=1), axis=1), range(top_tokens), axis=1)
+    test_top_words_idxs = np.take(np.flip(np.argsort(test_tfidf, axis=1), axis=1), range(top_tokens), axis=1)
+    #final_x_train = np.array([[token for token in doc if t.word_index[token] in train_top_words_idxs[i]] for i, doc in enumerate(x_train)])
+    final_x_train = np.array(helper(x_train, train_tfidf))
+    final_x_val = np.array(helper(x_val, val_tfidf))
+    final_x_test = np.array(helper(x_test, test_tfidf))
+    return (final_x_train, final_x_val, final_x_test)
 
 def fit_tokenizer(tokens):
     """
