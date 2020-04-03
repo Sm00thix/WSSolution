@@ -361,6 +361,57 @@ def perform_answer_detection(question_ids, answers, answer_labels, categories, g
     print('For random forest:')
     print(rf_acc_matrix)
 
+def wrong_question_answer_pairs(pred_file, true_file, questions, answers, question_ids):
+
+    def int_to_label(int_labels):
+        def mapping(x):
+            if x == 0:
+                return 'yes'
+            elif x == 1:
+                return 'no'
+            elif x == 2:
+                return 'na'
+            else:
+                raise Exception(f'Can not map int {x} to label')
+        text_labels = np.vectorize(mapping)(int_labels)
+        return text_labels
+
+    v_int = np.vectorize(int)
+    test_ids = v_int(np.loadtxt('WS/testing_ids.txt'))
+    question_ids = question_ids.tolist()
+    test_idxs = [question_ids.index(test_id) for test_id in test_ids]
+    test_questions = questions[test_idxs]
+    test_answers = answers[test_idxs]
+    true_arr = np.loadtxt(true_file)
+    pred_arr = np.loadtxt(pred_file)
+    wrong_questions = test_questions[pred_arr != true_arr]
+    wrong_answers = test_answers[pred_arr != true_arr]
+    pred_labels = int_to_label(pred_arr[pred_arr != true_arr])
+    true_labels = int_to_label(true_arr[pred_arr != true_arr])
+    wrong_pairs = np.stack((wrong_questions, wrong_answers, pred_labels, true_labels), axis=1)
+    np.savetxt('wrong_pairs.csv', wrong_pairs, delimiter=',', fmt='%s', encoding='utf-8', newline='\n')
+    return (None)
+
+def quality_error_analysis(pred_file, true_file, question_ids, answer_qualities):
+    v_int = np.vectorize(int)
+    test_ids = v_int(np.loadtxt('WS/testing_ids.txt'))
+    question_ids = question_ids.tolist()
+    test_idxs = [question_ids.index(test_id) for test_id in test_ids]
+    test_qualities = answer_qualities[test_idxs]
+    true_arr = np.loadtxt(true_file)
+    pred_arr = np.loadtxt(pred_file)
+    wrong_qualities = test_qualities[pred_arr != true_arr]
+    correct_qualities = test_qualities[pred_arr == true_arr]
+    mean_wrong = np.mean(wrong_qualities)
+    mean_correct = np.mean(correct_qualities)
+    std_wrong = np.std(wrong_qualities)
+    std_correct = np.std(correct_qualities)
+    print(f'Mean answer quality for wrong predictions: {mean_wrong}')
+    print(f'Std. of answer quality for wrong predictions: {std_wrong}')
+    print(f'Mean answer quality for correct predictions: {mean_correct}')
+    print(f'Std. of answer quality for correct predictions: {std_correct}')
+    return (None)
+
 if __name__ == '__main__':
     ###############################
     ### Load & preprocess data ####
@@ -374,43 +425,45 @@ if __name__ == '__main__':
         gensim_model.wv.save(filename)
     print("Done loading word embeddings!")
 
-    #questions, category_ids = perform_loading()
+    questions, category_ids = perform_loading()
 
     ###############################
     #### Perform classification ###
     ###############################
-    #nn_experiments = 10
-    #nn_metrics = 7
-    #test_and_val_size = 0.1
+    nn_experiments = 10
+    nn_metrics = 7
+    test_and_val_size = 0.1
 
-    #print('Performing general preprocessing...')
-    #tokens = sanitize(questions)
-    #print('Done!')
-    #preds = np.empty((nn_experiments,nn_metrics))
-    #for i in range(nn_experiments):
-    #    x_train, y_train, x_val, y_val, x_test, y_test = split_dataset(tokens, category_ids, test_and_val_size)
-    #    preds[i] = perform_nn(x_train, y_train, x_val, y_val, x_test, y_test, gensim_model)
-    #print('Average metrics of 10 best NN models:', np.mean(preds, axis=0))
-    #print('Std. of metrics of 10 best NN models:', np.std(preds, axis=0))
+    print('Performing general preprocessing...')
+    tokens = sanitize(questions)
+    print('Done!')
+    preds = np.empty((nn_experiments,nn_metrics))
+    for i in range(nn_experiments):
+        x_train, y_train, x_val, y_val, x_test, y_test = split_dataset(tokens, category_ids, test_and_val_size)
+        preds[i] = perform_nn(x_train, y_train, x_val, y_val, x_test, y_test, gensim_model)
+    print('Average metrics of 10 best NN models:', np.mean(preds, axis=0))
+    print('Std. of metrics of 10 best NN models:', np.std(preds, axis=0))
 
-    #perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
+    perform_rf(x_train, y_train, x_val, y_val, x_test, y_test)
 
     ##############################
     ######## Crowdsourcing #######
     ##############################
-    #clean_crowdsource()
+    clean_crowdsource()
     questions, question_ids, categories, answers, answer_qualities, answer_labels = load_crowdsource()
-    #perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'first')
-    #perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'last')
+    perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'first')
+    perform_cs_nn(question_ids, answers, answer_qualities, gensim_model, 'last')
 
     ##############################
     ######## Recommender #########
     ##############################
 
-    #perform_recommend_search(questions, question_ids, categories)
+    perform_recommend_search(questions, question_ids, categories)
 
     ##############################
     ###### Answer Detector #######
     ##############################
     top_tokens = 750
-    #perform_answer_detection(question_ids, answers, answer_labels, categories, gensim_model, top_tokens)
+    perform_answer_detection(question_ids, answers, answer_labels, categories, gensim_model, top_tokens)
+    wrong_question_answer_pairs('rf_train_all_test_all.npy', 'all_true', questions, answers, question_ids)
+    quality_error_analysis('rf_train_all_test_all.npy', 'all_true', question_ids, answer_qualities)
