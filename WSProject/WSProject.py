@@ -392,24 +392,36 @@ def wrong_question_answer_pairs(pred_file, true_file, questions, answers, questi
     np.savetxt('wrong_pairs.csv', wrong_pairs, delimiter=',', fmt='%s', encoding='utf-8', newline='\n')
     return (None)
 
-def quality_error_analysis(pred_file, true_file, question_ids, answer_qualities):
+def quality_error_analysis(pred_file, true_file, questions, answers, question_ids, answer_qualities):
     v_int = np.vectorize(int)
+    v_len = np.vectorize(len)
     test_ids = v_int(np.loadtxt('WS/testing_ids.txt'))
     question_ids = question_ids.tolist()
     test_idxs = [question_ids.index(test_id) for test_id in test_ids]
     test_qualities = answer_qualities[test_idxs]
+    test_answers = answers[test_idxs]
     true_arr = np.loadtxt(true_file)
     pred_arr = np.loadtxt(pred_file)
     wrong_qualities = test_qualities[pred_arr != true_arr]
     correct_qualities = test_qualities[pred_arr == true_arr]
+    wrong_length = v_len(sanitize(test_answers[pred_arr != true_arr]))
+    correct_length = v_len(sanitize(test_answers[pred_arr == true_arr]))
+    wrong_mean_length = np.mean(wrong_length)
+    correct_mean_length = np.mean(correct_length)
+    wrong_std_length = np.std(wrong_length)
+    correct_std_length = np.std(correct_length)
     mean_wrong = np.mean(wrong_qualities)
     mean_correct = np.mean(correct_qualities)
     std_wrong = np.std(wrong_qualities)
     std_correct = np.std(correct_qualities)
     print(f'Mean answer quality for wrong predictions: {mean_wrong}')
     print(f'Std. of answer quality for wrong predictions: {std_wrong}')
+    print(f'Mean length of answer for wrong predictions {wrong_mean_length}')
+    print(f'Std. of length of answer for wrong predictions {wrong_std_length}')
     print(f'Mean answer quality for correct predictions: {mean_correct}')
     print(f'Std. of answer quality for correct predictions: {std_correct}')
+    print(f'Mean length of answer for correct predictions: {correct_mean_length}')
+    print(f'Std. of length of answer for correct predictions {correct_std_length}')
     return (None)
 
 if __name__ == '__main__':
@@ -466,4 +478,4 @@ if __name__ == '__main__':
     top_tokens = 750
     perform_answer_detection(question_ids, answers, answer_labels, categories, gensim_model, top_tokens)
     wrong_question_answer_pairs('rf_train_all_test_all.npy', 'all_true', questions, answers, question_ids)
-    quality_error_analysis('rf_train_all_test_all.npy', 'all_true', question_ids, answer_qualities)
+    quality_error_analysis('rf_train_all_test_all.npy', 'all_true', questions, answers, question_ids, answer_qualities)
